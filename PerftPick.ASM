@@ -1,0 +1,211 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+PerftPick_Root:
+		; in rbp address of Pos
+		;    ecx depth
+
+virtual at rsp
+  .depth	rd 1
+  .move 	rd 1
+  .perftnodes	rq 1
+  .time 	rq 1
+  .movepick	rb sizeof.Pick
+  .lend rb 1
+end virtual
+  .localsize = .lend - rsp
+
+		       push   rbx rsi rdi r12 r13 r14 r15
+			sub   rsp, .localsize
+
+			xor   eax, eax
+			sub   ecx, 1
+			mov   dword [.depth], ecx
+			mov   qword [.perftnodes], rax
+			mov   qword [rbp+Pos.nodes], rax
+
+		       call   _GetTime
+			mov   qword [.time], rax
+
+
+			mov   rbx, [rbp+Pos.state]
+			lea   rsi, [.movepick]
+			mov   word [rsi+Pick.countermoves+2*0], 0
+			mov   word [rsi+Pick.countermoves+2*1], 0
+			mov   word [rsi+Pick.followupmoves+2*0], 0
+			mov   word [rsi+Pick.followupmoves+2*1], 0
+			mov   byte [rsi+Pick.recaptureSquare], 64
+			xor   ecx, ecx
+		       call   MovePick_Init
+.GenNext:
+		GetNextMove
+			mov   dword [.move], eax
+		       test   eax, eax
+			 jz   .GenDone
+
+			mov   ecx, eax
+		       call   IsMoveLegal
+		       test   rax, rax
+			 jz   .GenNext
+
+			add   qword [rbp+Pos.nodes], 1
+
+			lea   rdi, [Output]
+			mov   ecx, dword [.move]
+		       call   PrintUciMove
+			mov   qword [rdi], rax
+			add   rdi, rdx
+			mov   eax, ' : '
+		      stosd
+			sub   rdi, 1
+
+			mov   ecx, dword [.move]
+		       call   GivesCheck
+			mov   edx, eax
+			mov   ecx, dword [.move]
+		       call   DoMove_SetCheckInfo
+
+			mov   ecx, dword [.depth]
+		       call   PerftPick_Branch
+			add   qword [.perftnodes], rax
+
+		       call   PrintUnsignedInteger
+			mov   al, 10
+		      stosb
+			lea   rcx, [Output]
+		       call   _WriteOut
+
+			mov   ecx, dword [.move]
+		       call   UndoMove
+
+			jmp   .GenNext
+.GenDone:
+
+		       call   _GetTime
+			sub   rax, qword [.time]
+			cmp   rax, 1
+			adc   rax, 0
+			mov   qword [.time], rax
+
+			lea   rdi, [Output]
+		    stdcall   PrintString, 'total: '
+			mov   rax, qword [.perftnodes]
+		       call   PrintUnsignedInteger
+			mov   eax,'  ( '
+		      stosd
+			mov   rax, qword[.time]
+		       call   PrintUnsignedInteger
+			mov   rax,' ms  '
+		      stosq
+			sub   rdi, 3
+			mov   eax, 1000
+			mul   qword [rbp+Pos.nodes]
+			div   qword [.time]
+		       call   PrintUnsignedInteger
+			mov   rax,' nps ) ' + (10 shl 56)
+		      stosq
+			lea   rcx, [Output]
+		       call   _WriteOut
+
+
+
+			mov   rax, qword[.perftnodes]
+
+.Return:
+
+			add   rsp, .localsize
+			pop   r15 r14 r13 r12 rdi rsi rbx
+			ret
+
+
+
+
+
+
+
+
+
+
+
+PerftPick_Branch:
+		; in rbp address of Pos
+		;    ecx depth
+
+virtual at rsp
+  .depth	rd 1
+  .move 	rd 1
+  .perftnodes	rq 1
+  .movepick	rb sizeof.Pick
+  .lend rb 1
+end virtual
+  .localsize = .lend - rsp
+
+		       push   rbx rsi rdi r12 r13 r14 r15
+			sub   rsp, .localsize
+
+			xor   eax, eax
+			sub   ecx, 1
+			mov   dword [.depth], ecx
+			mov   qword [.perftnodes], rax
+			lea   rax, [rax+1]
+		       test   ecx, ecx
+			 js   .Return
+
+
+			mov   rbx, [rbp+Pos.state]
+			lea   rsi, [.movepick]
+			mov   word [rsi+Pick.countermoves+2*0], 0
+			mov   word [rsi+Pick.countermoves+2*1], 0
+			mov   word [rsi+Pick.followupmoves+2*0], 0
+			mov   word [rsi+Pick.followupmoves+2*1], 0
+			mov   byte [rsi+Pick.recaptureSquare], 64
+			xor   ecx, ecx
+		       call   MovePick_Init
+.GenNext:
+		GetNextMove
+			mov   dword [.move], eax
+		       test   eax, eax
+			 jz   .GenDone
+
+			mov   ecx, eax
+		       call   IsMoveLegal
+		       test   rax, rax
+			 jz   .GenNext
+
+			mov   ecx, dword [.move]
+		       call   GivesCheck
+			mov   edx, eax
+			mov   ecx, dword [.move]
+			add   qword [rbp+Pos.nodes], 1
+		       call   DoMove_SetCheckInfo
+
+			mov   ecx, dword [.depth]
+		       call   PerftPick_Branch
+			add   qword [.perftnodes], rax
+
+			mov   ecx, dword [.move]
+		       call   UndoMove
+
+			jmp   .GenNext
+.GenDone:
+
+
+
+			mov   rax, qword[.perftnodes]
+
+.Return:
+
+			add   rsp, .localsize
+			pop   r15 r14 r13 r12 rdi rsi rbx
+			ret
+
