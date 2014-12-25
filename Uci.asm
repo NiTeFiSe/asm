@@ -56,6 +56,9 @@ UciGetInput:
 		    stdcall   CmpString, 'test'
 		       test   eax, eax
 			jnz   UciTest
+		    stdcall   CmpString, 'go'
+		       test   eax, eax
+			jnz   UciGo
 		    stdcall   CmpString, 'position'
 		       test   eax, eax
 			jnz   UciPosition
@@ -71,9 +74,30 @@ UciUnknown:
 		       call   _WriteOut
 			jmp   UciGetInput
 
+
+
 UciPick:
 		       call   TestPick
 			jmp   UciGetInput
+
+
+
+UciGo:
+			cmp   byte [TimerThreadState], TIMER_STATE_TICKING
+			jne   .TimerGoodToGo
+			mov   rcx, qword [TimerThreadEndEvent]
+		       call   _SetEvent
+ .TimerGoodToGo:
+
+			mov   dword [AlottedTime], 1000
+			mov   byte [Signals.stop], 0
+
+			mov   rcx, qword [SearchThreadStartEvent]
+		       call   _SetEvent
+			mov   rcx, qword [TimerThreadStartEvent]
+		       call   _SetEvent
+
+			jmp  UciGetInput
 
 UciPerftP:
 			xor   eax, eax
@@ -87,13 +111,15 @@ UciPerftP:
 		       call   PerftPick_Root
 			jmp   UciGetInput
 
+
+
 UciPerft:
 		       call   SkipSpaces
 		       call   ParseInteger
 			mov   ecx, eax
 		       call   PerftGen_Root
 
-if DEBUG
+  if DEBUG
 			cmp   byte [perft_ok], -1
 			 je   UciGetInput
 			lea   rdi, [Output]
@@ -101,9 +127,11 @@ if DEBUG
 			mov   al, 10
 		      stosb
 			jmp   UciWriteOut
-else
+  else
 			jmp   UciGetInput
-end if
+  end if
+
+
 
 UciUci:
 			lea   rdi, [Output]

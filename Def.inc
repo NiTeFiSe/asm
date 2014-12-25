@@ -8,19 +8,29 @@
   Rank2BB  equ 0x000000000000FF00
   Rank1BB  equ 0x00000000000000FF
 
+
+MAX_PLY = 127
+
+; threads
+THREAD_STATE_EXIT   = 0
+THREAD_STATE_WAIT   = 1
+THREAD_STATE_SEARCH = 2
+TIMER_STATE_WAITING = 1
+TIMER_STATE_TICKING = 2
+
 ; cpu flags
- HAVE_POPCNT  fix 0x000001
- HAVE_AVX1    fix 0x000010
- HAVE_AVX2    fix 0x000020
- HAVE_BMI1    fix 0x000100
- HAVE_BMI2    fix 0x000200
+ HAVE_POPCNT  = 0x000001
+ HAVE_AVX1    = 0x000010
+ HAVE_AVX2    = 0x000020
+ HAVE_BMI1    = 0x000100
+ HAVE_BMI2    = 0x000200
 
 
 ; move types
- MOVE_TYPE_DPAWN  fix 1
- MOVE_TYPE_CASTLE fix 2
- MOVE_TYPE_EPCAP  fix 3
- MOVE_TYPE_PROM   fix 4
+ MOVE_TYPE_DPAWN  = 1
+ MOVE_TYPE_CASTLE = 2
+ MOVE_TYPE_EPCAP  = 3
+ MOVE_TYPE_PROM   = 4
 
 ; piece types
  White	 fix 0
@@ -33,6 +43,17 @@
  King	 fix 7
 
 ; piece values
+
+  VALUE_ZERO	  = 0
+  VALUE_DRAW	  = 0
+  VALUE_KNOWN_WIN = 10000
+  VALUE_MATE	  = 32000
+  VALUE_INFINITE  = 32001
+  VALUE_NONE	  = 32002
+
+  VALUE_MATE_IN_MAX_PLY  =  VALUE_MATE - MAX_PLY
+  VALUE_MATED_IN_MAX_PLY = -VALUE_MATE + MAX_PLY
+
 PAWN_VALUE_MG	= 198
 KNIGHT_VALUE_MG = 817
 BISHOP_VALUE_MG = 826
@@ -45,7 +66,6 @@ BISHOP_VALUE_EG = 857
 ROOK_VALUE_EG	= 1278
 QUEEN_VALUE_EG	= 2558
 
-VALUE_KNOWN_WIN = 10000
 
 struct TT
   mem	 rq 1
@@ -71,7 +91,6 @@ struct Pick
  endBadCaptures rq 1
  endQuiets	rq 1
  stage		rq 1
- ;ss             rq 1
  ttMove 	rd 1
  captureThreshold rd 1
  countermoves	rw 2
@@ -89,22 +108,11 @@ struct Pos
   sideToMove	rd 1
   startState	rq 1
   state 	rq 1
+  stateBase	rq 1
   ss		rq 1
+  ssBase	rq 1
   nodes 	rq 1
   thisThread	rq 1
-ends
-
-struct Stack
-  splitPoint	rq 1
-  pv		rq 1
-  killers	rw 2
-  ply		rw 1
-  skipNullMove	rb 1
-  reduction	rb 1
-  staticEval	rw 1
-  currentMove	rw 1
-  ttMove	rw 1
-  excludedMove	rw 1
 ends
 
 struct State
@@ -125,6 +133,21 @@ struct State
   pinned	 rq 1
   checkSq	 rq 8
 ends
+
+struct Stack
+  splitPoint	rq 1
+  killers	rw 2
+		rb 1
+  ply		rb 1
+  skipNullMove	rb 1
+  reduction	rb 1
+  staticEval	rw 1
+  currentMove	rw 1
+  ttMove	rw 1
+  excludedMove	rw 1
+  pv		rw MAX_PLY+1
+ends
+
 
 
 SQ_A1 = 0+8*0

@@ -74,6 +74,9 @@ IsMovePseudoLegal_JmpTable:
 ;0xF386
 ;1111 001110 000110
 
+align 4
+DrawValue dd 0,0
+
 align 1
  szUCIresponse	      db 'id name fasm chess engine',10
 		      db 'id author tthsqe',10
@@ -138,7 +141,6 @@ align 8
  hStdError	  dq ?
  hSearchThread	 dq ?
  hTimerThread	 dq ?
- AlottedTime	 dq ?
  MoveTime	 dq ?
  WTime		 dq ?
  BTime		 dq ?
@@ -151,20 +153,27 @@ align 4
  MultiPV      dd ?
  Ponder       dd ?
  Threads      dd ?
+ AlottedTime	 rd 1
 
 align 4
  RootDepth	   dd ?
  Score		   dd ?
  BestMove	   dw ?
  PonderMove	   dw ?
- SearchThreadStartEvent  dd ?
- TimerThreadStartEvent	 dd ?
- TimerThreadEndEvent	 dd ?
+ SearchThreadStartEvent  rq 1
+ TimerThreadStartEvent	 rq 1
+ TimerThreadEndEvent	 rq 1
 
 align 1
  PerftProblem	    db ?
  SearchThreadState  db ?
  TimerThreadState   db ?
+
+
+align 8
+Signals:
+
+ .stop rb 1
 
 
 
@@ -277,10 +286,17 @@ section '.code' code readable executable
 
 include 'gen_macro.inc'
 include 'pick_macro.inc'
+include 'search_macro.inc'
+include 'qsearch_macro.inc'
 
 
+include 'Thread.asm'
+include 'Timer.asm'
 
-include 'search.asm'
+include 'Update.asm'
+include 'QSearch.asm'
+include 'Search.asm'
+include 'Evaluate.asm'
 
 include 'SetCheckInfo.asm'
 include 'AttackersTo.asm'
@@ -319,29 +335,57 @@ include 'Init.asm'
 
 Start:
 
-		and   rsp, -32
-		sub   rsp, 32
+			and   rsp, -32
+			sub   rsp, 32
 
-	; get stuff from os
-	       call   _SetStdHandles
-	       call   _SetFrequency
-	       call   _SetAffinityMasks
-	       call   _CheckCPU
+		; get stuff from os
+		       call   _SetStdHandles
+		       call   _SetFrequency
+		       call   _SetAffinityMasks
+		       call   _CheckCPU
 
-	; initialize stuff
-		mov   ecx, 128
-	       call   HashTable_Allocate
-	       call   Initialize_MoveGen
-	       call   Initialize_DoMove
-	       call   InitializeTables
+		; initialize stuff
+			mov   ecx, 128
+		       call   HashTable_Allocate
+		       call   Initialize_MoveGen
+		       call   Initialize_DoMove
+		       call   InitializeTables
+
+
+		; start search thread
+			mov   ecx, FALSE
+			mov   edx, FALSE
+		       call   _CreateEvent
+			mov   qword [SearchThreadStartEvent], rax
+			lea   rcx, [SearchThread]
+			xor   edx, edx
+			xor   r8, r8
+		       call   _CreateThread
+			mov   qword [hSearchThread], rax
+
+		; start timer thread
+			mov   ecx, FALSE
+			mov   edx, FALSE
+		       call   _CreateEvent
+			mov   qword [TimerThreadStartEvent], rax
+			mov   ecx, FALSE
+			mov   edx, FALSE
+		       call   _CreateEvent
+			mov   qword [TimerThreadEndEvent], rax
+			lea   rcx, [TimerThread]
+			xor   edx, edx
+			xor   r8d, r8d
+		       call   _CreateThread
+			mov   qword [hTimerThread], rax
+
 
 	; loop
-	       call   UciLoop
+		       call   UciLoop
 
 	; clean up
-	       call   HashTable_Free
-		xor   ecx, ecx
-	       call   _ExitProcess
+		       call   HashTable_Free
+			xor   ecx, ecx
+		       call   _ExitProcess
 
 section '.idata' import data readable writeable
 
@@ -360,7 +404,7 @@ import kernel,\
 	__imp_QueryPerformanceFrequency,'QueryPerformanceFrequency',\
 	__imp_GetStdHandle,'GetStdHandle',\
 	__imp_ReadFile,'ReadFile',\
-	__imp_CreateEventA,'CreateEventA',\
+	__imp_CreateEvent,'CreateEventA',\
 	__imp_VirtualFree,'VirtualFree',\
 	__imp_ExitProcess,'ExitProcess',\
 	__imp_ExitThread,'ExitThread',\
@@ -369,5 +413,7 @@ import kernel,\
 	__imp_QueryPerformanceCounter,'QueryPerformanceCounter',\
 	__imp_LoadLibrary,'LoadLibraryA',\
 	__imp_VirtualAlloc,'VirtualAlloc',\
-	__imp_WriteFile,'WriteFile'
+	__imp_SetThreadAffinityMask,'SetThreadAffinityMask',\
+	__imp_WriteFile,'WriteFile',\
+	__imp_Sleep,'Sleep'
 

@@ -1,5 +1,68 @@
 
-_SetStdHandles: ; no arguments
+
+_SetEvent:
+		; rcx: object
+		; edx: ms
+			sub   rsp, 8*5
+		       call   qword [__imp_SetEvent]
+			add   rsp, 8*5
+			ret
+
+
+
+
+_WaitEvent:
+		; rcx: object
+		; edx: ms
+			sub   rsp, 8*5
+		       call   qword [__imp_WaitForSingleObject]
+			add   rsp, 8*5
+			ret
+
+
+_CreateEvent:
+		; ecx: Manual Reset
+		; edx: Initial State
+			sub   rsp, 8*5
+			mov   edx, ecx
+			mov   r8d, edx
+			xor   ecx, ecx
+			xor   r9d, r9d
+		       call   qword [__imp_CreateEvent]
+			add   rsp, 8*5
+			ret
+
+
+
+_CreateThread:
+		; rcx is start address
+		; rdx is parameter to pass
+		; r8 affinity mask (0 for no preference)
+		       push   rbx rsi rdi
+			sub   rsp, 8*8
+			mov   rdi, r8
+			mov   r8, rcx
+			mov   r9, rdx
+			xor   ecx, ecx
+			xor   edx, edx
+			mov   qword [rsp+8*4], rcx
+			mov   qword [rsp+8*5], rcx
+		       call   qword [__imp_CreateThread]
+			mov   rsi, rax
+		       test   rdi, rdi
+			 jz   @f
+			mov   rcx, rax
+			mov   rdx, rdi
+		       call   qword [__imp_SetThreadAffinityMask]
+			mov   rax, rcx
+	       @@:	add   rsp, 8*8
+			pop   rdi rsi rbx
+			ret
+
+
+
+_SetStdHandles:
+		; no arguments
 			sub   rsp,8*5
 			mov   ecx,STD_INPUT_HANDLE
 		       call   [__imp_GetStdHandle]
@@ -15,6 +78,7 @@ _SetStdHandles: ; no arguments
 
 
 _SetFrequency:
+		; no arguments
 			sub   rsp, 8*5
 			lea   rcx, [Frequency]
 		       call   qword [__imp_QueryPerformanceFrequency]
@@ -39,21 +103,21 @@ _SetAffinityMasks:
 
 
 
-_GetTime:	; out: rax  time in ms
+_GetTime:
+		; out: rax  time in ms
 		;      rdx  fractional part of time in ms
 			sub   rsp,8*9
 			lea   rcx, [rsp+8*8]
 		       call   qword [__imp_QueryPerformanceCounter]
-			mov   rax, qword [rsp+8*8]
-			mul   qword [Period]
+			mov   rax, qword [Period]
+			mul   qword [rsp+8*8]
 		       xchg   rax, rdx
 			add   rsp, 8*9
 			ret
 
 
-
-
-_VirtualAlloc:	; rcx is size
+_VirtualAlloc:
+		; rcx is size
 			sub   rsp, 8*5
 			mov   rdx, rcx
 			xor   ecx, ecx
@@ -64,7 +128,8 @@ _VirtualAlloc:	; rcx is size
 			ret
 
 
-_VirtualFree:	; rcx is address
+_VirtualFree:
+		; rcx is address
 			sub   rsp, 8*5
 			xor   edx, edx
 			mov   r8d, MEM_RELEASE
@@ -76,18 +141,19 @@ _VirtualFree:	; rcx is address
 
 
 
-_WriteOut: ; in: rcx  address of string start
-	   ;     rdi  address of string end
-		sub   rsp, 8*9
-		mov   r8, rdi
-		sub   r8, rcx
-		mov   rdx, rcx
-		mov   qword [rsp+8*4], 0
-		mov   rcx, qword [hStdOut]
-		lea   r9, [rsp+8*8]
-	       call   [__imp_WriteFile]
-		add   rsp, 8*9
-		ret
+_WriteOut:
+		; in: rcx  address of string start
+		;     rdi  address of string end
+			sub   rsp, 8*9
+			mov   r8, rdi
+			sub   r8, rcx
+			mov   rdx, rcx
+			mov   qword [rsp+8*4], 0
+			mov   rcx, qword [hStdOut]
+			lea   r9, [rsp+8*8]
+		       call   [__imp_WriteFile]
+			add   rsp, 8*9
+			ret
 
 
 _WriteError: ; in: rcx  address of string start
