@@ -173,9 +173,52 @@ PrintLongMove:
 
 
 
-PrintUciMove:	   ; in: ecx move
-		   ; out: rax move string
-		   ;      edx byte length of move string  4 or 5 for promotions
+PrintUciInfo:
+		;
+		       push   rdi rsi
+
+			lea   rdi, [Output]
+
+			mov   rax, 'time '
+		      stosq
+			sub   rdi, 3
+		       call   _GetTime
+			sub   rax, qword [SearchStartTime]
+		       call   PrintUnsignedInteger
+			mov   al,' '
+		      stosb
+
+			mov   ax, 'pv'
+		      stosw
+
+			mov   rsi, qword [rbp+Pos.ss]
+			lea   rsi, [rsi+Stack.pv]
+
+		      movzx   ecx, word [rsi]
+  .NextMove:
+			add   rsi, 2
+			mov   al,' '
+		      stosb
+		       call   PrintUciMove
+			mov   qword [rdi], rax
+			add   rdi, rdx
+
+		      movzx   ecx, word [rsi]
+		       test   ecx, ecx
+			jnz   .NextMove
+
+			mov   al, 10
+		      stosb
+			lea   rcx, [Output]
+		       call   _WriteOut
+
+			pop   rsi rdi
+			ret
+
+PrintUciMove:
+		; in:  ecx  move
+		; out: rax  move string
+		;      edx  byte length of move string  4 or 5 for promotions
 
 			mov  eax,'NULL'
 		       test  ecx,(1 shl 12)-1
@@ -233,7 +276,7 @@ PrintUciMove:	   ; in: ecx move
 ;;;;;;;;;;;; bitboard ;;;;;;;;;;;;;;;;;;;
 
 PrintBitBoard:	 ; in: rcx bitboard
-		 ; inout: rdi string
+		 ; io: rdi string
 			xor  edx,edx
        .NextBit:	 bt  rcx,rdx
 			sbb  eax,eax

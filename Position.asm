@@ -556,176 +556,178 @@ PrintPosition:	; in: rbp address of Pos
 
 
 
-ParseFEN:	; in: rsi address of fen string
+ParseFEN:
+		; in: rsi address of fen string
 		;     rbp address of Pos
 
-	       push   rbx rdi r15
+		       push   rbx rdi r15
 
 
-		xor   eax, eax
-		mov   ecx, (sizeof.Pos/8)
-		mov   rdi, rbp
-	  rep stosq
+			xor   eax, eax
+			mov   ecx, (sizeof.Pos/8)
+			mov   rdi, rbp
+		  rep stosq
 
-		lea   rbx, [StateList]
-		mov   qword [rbp+Pos.state], rbx
-		mov   qword [rbp+Pos.startState], rbx
+			lea   rbx, [StateList]
+			mov   qword [rbp+Pos.state], rbx
+			mov   qword [rbp+Pos.stateTable], rbx
 
-		xor   eax, eax
-		mov   ecx, (sizeof.State/8)
-		mov   rdi, rbx
-	  rep stosq
+			xor   eax, eax
+			mov   ecx, (sizeof.State/8)
+			mov   rdi, rbx
+		  rep stosq
 
 
-	       call  SkipSpaces
+		       call  SkipSpaces
 
-		xor  eax,eax
-		xor  ecx,ecx
-		jmp  .ExpectPiece
+			xor  eax,eax
+			xor  ecx,ecx
+			jmp  .ExpectPiece
 
 .ExpectPieceOrSlash:
-	       test   ecx,7
-		jnz   .ExpectPiece
-	      lodsb
-		cmp   al, '/'
-		jne   .Failed
-.ExpectPiece:
-	      lodsb
+		       test   ecx,7
+			jnz   .ExpectPiece
+		      lodsb
+			cmp   al, '/'
+			jne   .Failed
+	.ExpectPiece:
+		      lodsb
 
-		mov   edx, 8*White+Pawn
-		cmp   al, 'P'
-		 je   .FoundPiece
-		mov   edx, 8*White+Knight
-		cmp   al, 'N'
-		 je   .FoundPiece
-		mov   edx, 8*White+Bishop
-		cmp   al, 'B'
-		 je   .FoundPiece
-		mov   edx, 8*White+Rook
-		cmp   al, 'R'
-		 je   .FoundPiece
-		mov   edx, 8*White+Queen
-		cmp   al, 'Q'
-		 je   .FoundPiece
-		mov   edx, 8*White+King
-		cmp   al, 'K'
-		 je   .FoundPiece
+			mov   edx, 8*White+Pawn
+			cmp   al, 'P'
+			 je   .FoundPiece
+			mov   edx, 8*White+Knight
+			cmp   al, 'N'
+			 je   .FoundPiece
+			mov   edx, 8*White+Bishop
+			cmp   al, 'B'
+			 je   .FoundPiece
+			mov   edx, 8*White+Rook
+			cmp   al, 'R'
+			 je   .FoundPiece
+			mov   edx, 8*White+Queen
+			cmp   al, 'Q'
+			 je   .FoundPiece
+			mov   edx, 8*White+King
+			cmp   al, 'K'
+			 je   .FoundPiece
 
-		mov   edx, 8*Black+Pawn
-		cmp   al, 'p'
-		 je   .FoundPiece
-		mov   edx, 8*Black+Knight
-		cmp   al, 'n'
-		 je   .FoundPiece
-		mov   edx, 8*Black+Bishop
-		cmp   al, 'b'
-		 je   .FoundPiece
-		mov   edx, 8*Black+Rook
-		cmp   al, 'r'
-		 je   .FoundPiece
-		mov   edx, 8*Black+Queen
-		cmp   al, 'q'
-		 je   .FoundPiece
-		mov   edx, 8*Black+King
-		cmp   al, 'k'
-		 je   .FoundPiece
+			mov   edx, 8*Black+Pawn
+			cmp   al, 'p'
+			 je   .FoundPiece
+			mov   edx, 8*Black+Knight
+			cmp   al, 'n'
+			 je   .FoundPiece
+			mov   edx, 8*Black+Bishop
+			cmp   al, 'b'
+			 je   .FoundPiece
+			mov   edx, 8*Black+Rook
+			cmp   al, 'r'
+			 je   .FoundPiece
+			mov   edx, 8*Black+Queen
+			cmp   al, 'q'
+			 je   .FoundPiece
+			mov   edx, 8*Black+King
+			cmp   al, 'k'
+			 je   .FoundPiece
 
-		sub   eax, '0'
-		 js   .Failed
-		cmp   eax, 8
-		 ja   .Failed
-.Spaces:
-		add   ecx, eax
-		jmp   .PieceDone
+			sub   eax, '0'
+			 js   .Failed
+			cmp   eax, 8
+			 ja   .Failed
+	.Spaces:
+			add   ecx, eax
+			jmp   .PieceDone
 
-.FoundPiece:
-		xor   ecx, 0111000b
-		mov   edi, edx
-		and   edi, 7
-		bts   qword[rbp+Pos.typeBB+8*rdi], rcx
-		mov   edi, edx
-		shr   edi, 3
-		bts   qword[rbp+Pos.typeBB+8*rdi], rcx
-		mov   byte[rbp+Pos.board+rcx], dl
-		xor   ecx, 0111000b
-		add   ecx, 1
-.PieceDone:
-		cmp   ecx, 64
-		 jb   .ExpectPieceOrSlash
+	.FoundPiece:
+			xor   ecx, 0111000b
+			mov   edi, edx
+			and   edi, 7
+			bts   qword[rbp+Pos.typeBB+8*rdi], rcx
+			mov   edi, edx
+			shr   edi, 3
+			bts   qword[rbp+Pos.typeBB+8*rdi], rcx
+			mov   byte[rbp+Pos.board+rcx], dl
+			xor   ecx, 0111000b
+			add   ecx, 1
+	.PieceDone:
+			cmp   ecx, 64
+			 jb   .ExpectPieceOrSlash
 
-.Turn:
-	       call   SkipSpaces
-	      lodsb
-		xor   eax, eax
-		cmp   al, 'b'
-	       sete   cl
-		mov   dword[rbp+Pos.sideToMove], ecx
+	.Turn:
+		       call   SkipSpaces
+		      lodsb
+			xor   eax, eax
+			cmp   al, 'b'
+		       sete   cl
+			mov   dword[rbp+Pos.sideToMove], ecx
 
-.Castling:
-	       call   SkipSpaces
-	      lodsb
-		cmp   al, '-'
-		 je   .EpSquare
-		cmp   al, 'K'
-		jne   @f
-		 or   byte[rbx+State.castlingRights], 1
-	      lodsb
-	@@:	cmp   al, 'Q'
-		jne   @f
-		 or   byte[rbx+State.castlingRights], 2
-	      lodsb
-	@@:	cmp   al, 'k'
-		jne   @f
-		 or   byte[rbx+State.castlingRights], 4
-	      lodsb
-	@@:	cmp   al, 'q'
-		jne   @f
-		 or   byte[rbx+State.castlingRights], 8
-	@@:
+	.Castling:
+		       call   SkipSpaces
+		      lodsb
+			cmp   al, '-'
+			 je   .EpSquare
+			cmp   al, 'K'
+			jne   @f
+			 or   byte[rbx+State.castlingRights], 1
+		      lodsb
+		@@:	cmp   al, 'Q'
+			jne   @f
+			 or   byte[rbx+State.castlingRights], 2
+		      lodsb
+		@@:	cmp   al, 'k'
+			jne   @f
+			 or   byte[rbx+State.castlingRights], 4
+		      lodsb
+		@@:	cmp   al, 'q'
+			jne   @f
+			 or   byte[rbx+State.castlingRights], 8
+		@@:
 
-.EpSquare:
-	       call   SkipSpaces
-	       call   ParseSquare
-		mov   byte [rbx+State.epSquare], al
-		cmp   eax, 64
-		jae   .FiftyMoves
+	.EpSquare:
+		       call   SkipSpaces
+		       call   ParseSquare
+			mov   byte [rbx+State.epSquare], al
+			cmp   eax, 64
+			jae   .FiftyMoves
 
-		mov   rdx, qword [rbp+Pos.typeBB+8*Pawn]
-		mov   ecx, dword [rbp+Pos.sideToMove]
-		and   rdx, qword [rbp+Pos.typeBB+8*rcx]
-		xor   ecx, 1
-		shl   ecx, 6+3
-	       test   rdx, qword [WhitePawnAttacks+rcx+8*rax]
-		jnz   .FiftyMoves
-		mov   byte [rbx+State.epSquare], 64
+			mov   rdx, qword [rbp+Pos.typeBB+8*Pawn]
+			mov   ecx, dword [rbp+Pos.sideToMove]
+			and   rdx, qword [rbp+Pos.typeBB+8*rcx]
+			xor   ecx, 1
+			shl   ecx, 6+3
+		       test   rdx, qword [WhitePawnAttacks+rcx+8*rax]
+			jnz   .FiftyMoves
+			mov   byte [rbx+State.epSquare], 64
 
-.FiftyMoves:
-	       call   SkipSpaces
-	       call   ParseInteger
-		mov   byte [rbx+State.rule50], al
+	.FiftyMoves:
+		       call   SkipSpaces
+		       call   ParseInteger
+			mov   byte [rbx+State.rule50], al
 
-.MoveNumber:
-	       call   SkipSpaces
-	       call   ParseInteger
-		mov   dword [rbp+Pos.gamePly], eax
-		sub   eax, 1
-		adc   eax, 0
-		shl   eax, 1
-		add   eax, dword[rbp+Pos.sideToMove]
+	.MoveNumber:
+		       call   SkipSpaces
+		       call   ParseInteger
+			mov   dword [rbp+Pos.gamePly], eax
+			sub   eax, 1
+			adc   eax, 0
+			shl   eax, 1
+			add   eax, dword[rbp+Pos.sideToMove]
 
-	;       call   VerifyPosition
-	;       test   eax,eax
-	;         jz  .Failed
+		;       call   VerifyPosition
+		;       test   eax,eax
+		;         jz  .Failed
 
-		call  SetPositionState
+			call  SetPositionState
 
-		 or   eax, -1
-		pop   r15 rdi rbx
-		ret
+			 or   eax, -1
+			pop   r15 rdi rbx
+			ret
 
-.Failed:	xor   eax, eax
-		pop   r15 rdi rbx
-		ret
+	.Failed:
+			xor   eax, eax
+			pop   r15 rdi rbx
+			ret
 
 
 PrintFen:

@@ -3,7 +3,7 @@ PV_NODE    = 1
 NONPV_NODE = 2
 
 
-macro search Nt, SpNode {
+macro search NT, SpNode {
 
 			; rbp: address of Pos
 			; ecx: alpha
@@ -57,8 +57,26 @@ virtual at rsp
 end virtual
 
 .localsize = .lend-rsp
-		       push   rbx rsi rdi
+		       push   rbx rsi rdi r12 r13 r14 r15
 			sub   rsp, .localsize
+
+
+match =ROOT_NODE, NT
+\{
+ PvNode equ 1
+\}
+
+match =PV_NODE, NT
+\{
+ PvNode equ 1
+\}
+
+match =NONPV_NODE, NT
+\{
+ PvNode equ 0
+\}
+
+
 
 			mov   dword [.alpha], ecx
 			mov   dword [.beta], edx
@@ -98,14 +116,20 @@ end virtual
 		       test   eax, eax
 			 jz   .MovePickDone
 
+	if NT in <ROOT_NODE, PV_NODE>
+			mov   rax, qword [.ss]
+			mov   dword[rax+Stack.pv+1*sizeof.Stack], 0
+	end if
 
 		; check if move is legal
-	if NT in <PV_NODE,NONPV_NODE>
+	if NT in <PV_NODE, NONPV_NODE>
 			mov   ecx, dword [.move]
 		       call   IsMoveLegal
 		       test   rax, rax
-			 jz   .GenNext
+			 jz   .MovePickLoop
 	end if
+
+			add   dword [.moveCount], 1
 
 			mov   ecx, dword [.move]
 		       call   GivesCheck
@@ -131,27 +155,34 @@ end virtual
 			add   r9, sizeof.Stack
 			xor   r10, r10
 		       call   rax
-
+			neg   eax
+			mov   esi, eax
 			mov   dword [.value], eax
 
 			mov   ecx, dword [.move]
 		       call   UndoMove
 
-			mov   eax, dword [.value]
-			cmp   eax, dword [.bestValue]
+			cmp   esi, dword [.bestValue]
 			jle   .NoNewBestValue
-			mov   dword [.bestValue], eax
-			cmp   eax, dword [.alpha]
+			mov   dword [.bestValue], esi
+			cmp   esi, dword [.alpha]
 			jle   .NoNewAlpha
 
 			mov   ecx, dword [.move]
-
-	if NT in <ROOT_MOVE, PV_NODE>
+			mov   dword [.bestMove], ecx
+	if PvNode eq 1
 			mov   rdx, qword [.ss]
 		       call   UpdateStackPV
-			cmp   eax, dword [.beta]
+	end if
+
+
+	if PvNode eq 1
+			cmp   esi, dword [.beta]
 			jge   .MovePickDone
-			mov   dword [.alpha], eax
+			mov   dword [.alpha], esi
+	else
+		  assert_ge   esi, dword [.beta], 'did not fail high'
+			jmp   .MovePickDone
 	end if
 
 .NoNewAlpha:
@@ -159,10 +190,9 @@ end virtual
 
 			jmp   .MovePickLoop
 
-
 .MovePickDone:
-			mov   rax, qword [rbp+Pos.state]
-			mov   rax, qword [rax+State.checkersBB]
+		      ;  mov   rbx, qword [rbp+Pos.state]
+			mov   rax, qword [rbx+State.checkersBB]
 			mov   r15d, dword [.bestValue]
 			cmp   dword [.moveCount], 0
 			 je   .Mate
@@ -175,8 +205,10 @@ end virtual
 
 
 			add   rsp, .localsize
-			pop   rdi rsi rbx
+			pop   r15 r14 r13 r12 rdi rsi rbx
 			ret
+
+
 
 		      align   8
 .CheckQuietBestMove:

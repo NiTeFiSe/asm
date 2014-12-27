@@ -89,13 +89,18 @@ UciGo:
 		       call   _SetEvent
  .TimerGoodToGo:
 
-			mov   dword [AlottedTime], 1000
+			mov   dword [AlottedTime], 50
 			mov   byte [Signals.stop], 0
+
+		       call   _GetTime
+			mov   qword [SearchStartTime], rax
 
 			mov   rcx, qword [SearchThreadStartEvent]
 		       call   _SetEvent
 			mov   rcx, qword [TimerThreadStartEvent]
 		       call   _SetEvent
+
+
 
 			jmp  UciGetInput
 
@@ -170,7 +175,7 @@ UciUndo:
 			adc   r15d, 0
 			sub   r15d, 1
 .Undo:
-			cmp   rbx, qword [rbp+Pos.startState]
+			cmp   rbx, qword [rbp+Pos.stateTable]
 			jbe   UciShow
 		      movzx   ecx, word [rbx+State.move]
 		       call   UndoMove

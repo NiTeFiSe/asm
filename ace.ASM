@@ -5,8 +5,10 @@ entry Start
 DEBUG = 0
 
 include 'win64axp.inc'
+include 'Structs.inc'
 include 'Def.inc'
 include 'Functions.inc'
+include 'assert.inc'
 
  ; special instruction sets
  ;  HAVE_POPCNT   popcnt
@@ -148,6 +150,7 @@ align 8
  BInc		 dq ?
  MovesToGo	 dq ?
  temp		 dq ?
+ SearchStartTime dq ?
 
 align 4
  MultiPV      dd ?
