@@ -1,40 +1,154 @@
 
 
-_SetEvent:
-		; rcx: object
-		; edx: ms
+;;;;;;;;;
+; mutex ;
+;;;;;;;;;
+
+_MutexCreate:
+	; rcx: address of critial section object
 			sub   rsp, 8*5
-		       call   qword [__imp_SetEvent]
+		       call   qword [__imp_InitializeCriticalSection]
+			add   rsp, 8*5
+			ret
+_MutexLock:
+	; rcx: address of critial section object
+			sub   rsp, 8*5
+		       call   qword [__imp_EnterCriticalSection]
+			add   rsp, 8*5
+			ret
+_MutexUnlock:
+	; rcx: address of critial section object
+			sub   rsp, 8*5
+		       call   qword [__imp_LeaveCriticalSection]
+			add   rsp, 8*5
+			ret
+_MutexDestroy:
+	; rcx: address of critial section object
+			sub   rsp, 8*5
+		       call   qword [__imp_InitializeCriticalSection]
 			add   rsp, 8*5
 			ret
 
+;;;;;;;;;
+; event ;
+;;;;;;;;;
 
-
-
-_WaitEvent:
-		; rcx: object
-		; edx: ms
+_EventCreate:
+	; ecx: Manual Reset
+	; edx: Initial State
 			sub   rsp, 8*5
-		       call   qword [__imp_WaitForSingleObject]
-			add   rsp, 8*5
-			ret
-
-
-_CreateEvent:
-		; ecx: Manual Reset
-		; edx: Initial State
-			sub   rsp, 8*5
-			mov   edx, ecx
-			mov   r8d, edx
 			xor   ecx, ecx
+			xor   edx, edx
+			xor   r8d, r8d
 			xor   r9d, r9d
 		       call   qword [__imp_CreateEvent]
 			add   rsp, 8*5
 			ret
+_EventSignal:
+	; rcx: handle
+			sub   rsp, 8*5
+		       call   qword [__imp_SetEvent]
+			add   rsp, 8*5
+			ret
+_EventWait:
+	; rcx: handle
+	; rdx: address of critial section object
+		       push   rbx rsi
+			sub   rsp, 8*5
+			mov   rbx, rcx
+			mov   rsi, rdx
+			mov   rcx, rdx
+		       call   qword [__imp_LeaveCriticalSection]
+			mov   rcx, rbx
+			 or   edx, -1
+		       call   qword [__imp_WaitForSingleObject]
+			mov   rcx, rsi
+		       call   qword [__imp_EnterCriticalSection]
+			add   rsp, 8*5
+			pop   rsi rbx
+			ret
+_EventTimedWait:
+	; rcx: handle
+	; rdx: address of critial section object
+	; r8d: ms
+		       push   rbx rsi rdi
+			sub   rsp, 8*4
+			mov   rbx, rcx
+			mov   rsi, rdx
+			mov   edi, r8d
+			mov   rcx, rdx
+		       call   qword [__imp_LeaveCriticalSection]
+			mov   rcx, rbx
+			mov   edx, edi
+		       call   qword [__imp_WaitForSingleObject]
+			mov   rcx, rsi
+		       call   qword [__imp_EnterCriticalSection]
+			add   rsp, 8*4
+			pop   rdi rsi rbx
+			ret
+_EventDestroy:
+	; rcx: handle
+			sub   rsp, 8*5
+		       call   qword [__imp_CloseHandle]
+			add   rsp, 8*5
+			ret
+
+;;;;;;;;;;
+; thread ;
+;;;;;;;;;;
+
+_ThreadCreate:
+	; rcx: start address
+	; rdx: parameter to pass
+			sub   rsp, 8*7
+			mov   r8, rcx
+			mov   r9, rdx
+			xor   ecx, ecx
+			xor   edx, edx
+			mov   qword [rsp+8*4], rcx
+			mov   qword [rsp+8*5], rcx
+		       call   qword [__imp_CreateThread]
+			add   rsp, 8*7
+			ret
+_ThreadJoin:
+	; rcx: handle
+		       push   rbx
+			sub   rsp, 8*4
+			mov   rbx, rcx
+			 or   edx, -1
+		       call   qword [__imp_WaitForSingleObject]
+			mov   rcx, rbx
+		       call   qword [__imp_CloseHandle]
+			add   rsp, 8*4
+			pop   rbx
+			ret
+
+_ExitProcess:
+	; rcx is exit code
+			sub   rsp, 8*5
+			jmp   qword[__imp_ExitProcess]
+_ExitThread:
+	; rcx is exit code
+			sub   rsp, 8*5
+			jmp   qword[__imp_ExitThread]
 
 
 
-_CreateThread:
+
+
+
+
+
+_Sleep:
+	; ecx  ms
+			sub   rsp, 8*5
+		       call   qword [__imp_Sleep]
+			add   rsp, 8*5
+			ret
+
+
+
+;_CreateThread:
 		; rcx is start address
 		; rdx is parameter to pass
 		; r8 affinity mask (0 for no preference)
@@ -78,7 +192,7 @@ _SetStdHandles:
 
 
 _SetFrequency:
-		; no arguments
+	; no arguments
 			sub   rsp, 8*5
 			lea   rcx, [Frequency]
 		       call   qword [__imp_QueryPerformanceFrequency]
@@ -94,18 +208,12 @@ _SetFrequency:
 			add   rsp, 8*5
 			ret
 
-_SetAffinityMasks:
-		       push  rbp
-		     invoke  __imp_GetCurrentProcess
-		     invoke  __imp_GetProcessAffinityMask,eax,ProcessAffinityMask,SystemAffinityMask
-			pop  rbp
-			ret
 
 
 
 _GetTime:
-		; out: rax  time in ms
-		;      rdx  fractional part of time in ms
+	; out: rax  time in ms
+	;      rdx  fractional part of time in ms
 			sub   rsp,8*9
 			lea   rcx, [rsp+8*8]
 		       call   qword [__imp_QueryPerformanceCounter]
@@ -117,7 +225,7 @@ _GetTime:
 
 
 _VirtualAlloc:
-		; rcx is size
+	; rcx is size
 			sub   rsp, 8*5
 			mov   rdx, rcx
 			xor   ecx, ecx
@@ -129,7 +237,7 @@ _VirtualAlloc:
 
 
 _VirtualFree:
-		; rcx is address
+	; rcx is address
 			sub   rsp, 8*5
 			xor   edx, edx
 			mov   r8d, MEM_RELEASE
@@ -140,10 +248,12 @@ _VirtualFree:
 			ret
 
 
+_WriteOut_Output:
+			lea   rcx, [Output]
 
 _WriteOut:
-		; in: rcx  address of string start
-		;     rdi  address of string end
+	; in: rcx  address of string start
+	;     rdi  address of string end
 			sub   rsp, 8*9
 			mov   r8, rdi
 			sub   r8, rcx
@@ -151,84 +261,73 @@ _WriteOut:
 			mov   qword [rsp+8*4], 0
 			mov   rcx, qword [hStdOut]
 			lea   r9, [rsp+8*8]
-		       call   [__imp_WriteFile]
+		       call   qword [__imp_WriteFile]
 			add   rsp, 8*9
 			ret
 
 
-_WriteError: ; in: rcx  address of string start
-	     ;     rdx  address of string end
-		sub   rsp, 8*9
-		mov   r8d, edx
-		sub   r8d, ecx
-		mov   rdx, rcx
-		mov   qword [rsp+8*4], 0
-		mov   rcx, qword [hStdError]
-		lea   r9, [rsp+8*8]
-	       call   [__imp_WriteFile]
-		add   rsp, 8*9
-		ret
+_WriteError:
+	; in: rcx  address of string start
+	;     rdi  address of string end
+			sub   rsp, 8*9
+			mov   r8, rdi
+			sub   r8, rcx
+			mov   rdx, rcx
+			mov   qword [rsp+8*4], 0
+			mov   rcx, qword [hStdError]
+			lea   r9, [rsp+8*8]
+		       call   qword [__imp_WriteFile]
+			add   rsp, 8*9
+			ret
 
 
 
-_ReadIn:     ; in: rsi  address to write string
-	     ; out: eax =  0 if not file end
-	     ;      eax = -1 if file end
-	       push   rsi
-		sub   rsp, 8*8
+_ReadIn:
+	; in: rsi  address to write string
+	; out: eax =  0 if not file end
+	;      eax = -1 if file end
+		       push   rsi
+			sub   rsp, 8*8
 .read:
-		mov   rdx, rsi
-		mov   qword [rsp+20H], 0
-		lea   r9, [rsp+30H]
-		mov   r8d, 1
-		mov   rcx, qword [hStdIn]
-	       call   [__imp_ReadFile]
-		mov   dl, byte [rsi]
-		add   rsi, 1
-	       test   eax, eax
-		 jz   @f
-		 or   eax,-1
-		cmp   dword [rsp+30H], 0
-		 jz   .return
-	@@:	cmp   dl, ' '
-		jae   .read
+			mov   rdx, rsi
+			mov   qword [rsp+20H], 0
+			lea   r9, [rsp+30H]
+			mov   r8d, 1
+			mov   rcx, qword [hStdIn]
+		       call   qword [__imp_ReadFile]
+			mov   dl, byte [rsi]
+			add   rsi, 1
+		       test   eax, eax
+			 jz   @f
+			 or   eax,-1
+			cmp   dword [rsp+30H], 0
+			 jz   .return
+		@@:	cmp   dl, ' '
+			jae   .read
 
-		mov   byte [rsi-1], 0
-		xor   eax, eax
+			mov   byte [rsi-1], 0
+			xor   eax, eax
 .return:
-		add   rsp, 8*8
-		pop   rsi
-		ret
+			add   rsp, 8*8
+			pop   rsi
+			ret
 
 
 
-
-
-
-	      align   16
-_ExitProcess:	; rcx is exit code
-			jmp  qword[__imp_ExitProcess]
-
-	      align   16
-_ExitThread:	; rcx is exit code
-			jmp  qword[__imp_ExitThread]
-
-
-
-
-_ErrorBox:	; rdi points to null terminated string to write to message box
-			sub  rsp,8*7
-			lea  rcx,[.user32]
-		       call  qword[__imp_LoadLibrary]
-			mov  rcx,rax
-			lea  rdx,[.MessageBoxA]
-		       call  qword[__imp_GetProcAddress]
-			xor  ecx,ecx
-			mov  rdx,rdi
-			lea  r8,[.caption]
-			mov  r9d,MB_OK
-		       call  rax
-			add  rsp,8*7
+_ErrorBox:
+		; rdi points to null terminated string to write to message box
+			sub   rsp, 8*7
+			lea   rcx, [.user32]
+		       call   qword [__imp_LoadLibrary]
+			mov   rcx, rax
+			lea   rdx, [.MessageBoxA]
+		       call   qword [__imp_GetProcAddress]
+			xor   ecx, ecx
+			mov   rdx, rdi
+			lea   r8, [.caption]
+			mov   r9d, MB_OK
+		       call   rax
+			add   rsp, 8*7
 			ret
 
 .user32: db 'user32.dll',0
@@ -237,77 +336,77 @@ _ErrorBox:	; rdi points to null terminated string to write to message box
 
 
 _CheckCPU:
-		       push  rbp rbx r15
+		       push   rbp rbx r15
 
 if HAVE and HAVE_POPCNT
-			lea  r15,[szCPUError.POPCNT]
-			mov  eax,1
-			xor  ecx,ecx
+			lea   r15, [szCPUError.POPCNT]
+			mov   eax, 1
+			xor   ecx, ecx
 		      cpuid
-			and  ecx,(1 shl 23)
-			cmp  ecx,(1 shl 23)
-			jne  .Failed
+			and   ecx, (1 shl 23)
+			cmp   ecx, (1 shl 23)
+			jne   .Failed
 end if
 
 if HAVE and HAVE_AVX1
-			lea  r15,[szCPUError.AVX1]
-			mov  eax,1
-			xor  ecx,ecx
+			lea   r15, [szCPUError.AVX1]
+			mov   eax, 1
+			xor   ecx, ecx
 		      cpuid
-			and  ecx,(1 shl 27)+(1 shl 28)
-			cmp  ecx,(1 shl 27)+(1 shl 28)
-			jne  .Failed
-			mov  ecx,0
+			and   ecx, (1 shl 27)+(1 shl 28)
+			cmp   ecx, (1 shl 27)+(1 shl 28)
+			jne   .Failed
+			mov   ecx, 0
 		     xgetbv
-			and  eax,0x06
-			cmp  eax,0x06
-			jne  .Failed
+			and   eax, 0x06
+			cmp   eax, 0x06
+			jne   .Failed
 end if
 
 if HAVE and HAVE_AVX2
-			lea  r15,[szCPUError.AVX2]
-			mov  eax,7
-			xor  ecx,ecx
+			lea   r15, [szCPUError.AVX2]
+			mov   eax, 7
+			xor   ecx, ecx
 		      cpuid
-			and  ebx,(1 shl 5)
-			cmp  ebx,(1 shl 5)
-			jne  .Failed
+			and   ebx, (1 shl 5)
+			cmp   ebx, (1 shl 5)
+			jne   .Failed
 end if
 
 if HAVE and HAVE_BMI1
-			lea  r15,[szCPUError.BMI1]
-			mov  eax,7
-			xor  ecx,ecx
+			lea   r15, [szCPUError.BMI1]
+			mov   eax, 7
+			xor   ecx, ecx
 		      cpuid
-			and  ebx,(1 shl 3)
-			cmp  ebx,(1 shl 3)
-			jne  .Failed
+			and   ebx, (1 shl 3)
+			cmp   ebx, (1 shl 3)
+			jne   .Failed
 end if
 
 if HAVE and HAVE_BMI2
-			lea  r15,[szCPUError.BMI2]
-			mov  eax,7
-			xor  ecx,ecx
+			lea   r15, [szCPUError.BMI2]
+			mov   eax, 7
+			xor   ecx, ecx
 		      cpuid
-			and  ebx,(1 shl 8)
-			cmp  ebx,(1 shl 8)
-			jne  .Failed
+			and   ebx, (1 shl 8)
+			cmp   ebx, (1 shl 8)
+			jne   .Failed
 end if
 
 			pop  r15 rbx rbp
 			ret
 
-	.Failed:	lea  rdi,[Output]
-			lea  rsi,[szCPUError]
-		       call  Append
-			mov  rsi,r15
-		       call  Append
-			xor  eax,eax
+	.Failed:	lea   rdi, [Output]
+			lea   rsi, [szCPUError]
+		       call   Append
+			mov   rsi,r15
+		       call   Append
+			xor   eax,eax
 		      stosd
-			lea  rdi,[Output]
-		       call  _ErrorBox
-			xor  ecx,ecx
-		       call  _ExitProcess
+			lea   rdi,[Output]
+		       call   _ErrorBox
+			xor   ecx,ecx
+		       call   _ExitProcess
 
 
 

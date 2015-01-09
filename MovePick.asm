@@ -4,10 +4,10 @@
 TestPick:
 		       push   rbx rdi rsi r12 r13 r14 r15
 virtual at rsp
-.movepick rb sizeof.Pick
-.lend rb 1
+  .movepick rb sizeof.Pick
+  .lend rb 1
 end virtual
-.localsize = .lend - rsp
+  .localsize = .lend - rsp
 
 			sub   rsp, .localsize
 			mov   rbx, [rbp+Pos.state]
@@ -18,7 +18,7 @@ end virtual
 			mov   word [rsi+Pick.followupmoves+2*1], 0
 			mov   byte [rsi+Pick.recaptureSquare], 64
 			xor   ecx, ecx
-		       call   MovePick_Init
+		       call   MovePick_Init_Search
 
 .GenNext:
 		GetNextMove
@@ -51,7 +51,7 @@ end virtual
 
 
 		      align   16
-MovePick_Init:
+MovePick_Init_Search:
 		; in: rbp  address of Pos
 		;     rsi  address of Pick
 		;     rbx  address of State
@@ -80,15 +80,15 @@ MovePick_Init:
 
 		       call   IsMovePseudoLegal
 		       test   rax, rax
+		      cmovz   edi, eax
 			 jz   .NoTTMove
 
-			mov   dword [r15], esi
 			add   r15, 8
 .NoTTMove:
+			mov   dword [rsi+Pick.ttMove], edi
 			mov   qword [rsi+Pick.end], r15
 			pop   r15 rdi
 			ret
-
 
 
 
@@ -119,6 +119,8 @@ MovePick_Captures_S1:
 			jae   GenNext_Killers_S1
 		   PickBest   r14, r13, r15
 			mov   ecx, eax
+			cmp   eax, dword [rsi+Pick.ttMove]
+			 je   MovePick_Captures_S1
 		    SeeSign   .Positive
 			mov   rdx, qword[rsi+Pick.endBadCaptures]
 		       test   eax, eax
@@ -346,7 +348,7 @@ MovePick_Captures_S3:
 		   PickBest   r14, r13, r15
 			mov   ecx, eax
 			cmp   eax, dword [rsi+Pick.ttMove]
-			 je   MovePick_Evasions_S2
+			 je   MovePick_Captures_S3
 			lea   rdx, [MovePick_Captures_S3]
 			ret
 
@@ -363,7 +365,7 @@ MovePick_QuietChecks_S3:
 			add   r14, 8
 			cmp   eax, dword [rsi+Pick.ttMove]
 			 je   MovePick_QuietChecks_S3
-			lea   rdx, [MovePick_Quiets_1_S1]
+			lea   rdx, [MovePick_QuietChecks_S3]
 			ret
 
 GenNext_QSearch_1:
@@ -428,6 +430,7 @@ MovePick_Captures_S5:
 		       call   See
 			cmp   eax, dword[rsi+Pick.captureThreshold]
 			jle   MovePick_Captures_S5
+			mov   eax, ecx
 			lea   rdx, [MovePick_Captures_S5]
 			ret
 

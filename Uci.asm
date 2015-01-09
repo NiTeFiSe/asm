@@ -11,6 +11,9 @@ UciLoop:
 			jmp   UciWriteOut
 
 UciQuit:
+			lea   rcx, [threadPool]
+		       call   _ZN10ThreadPool23wait_for_think_finishedEv
+
 			pop   r15 r14 r13 r12 rdi rsi rbp
 			ret
 
@@ -29,6 +32,22 @@ UciGetInput:
 		    stdcall   CmpString, 'uci'
 		       test   eax, eax
 			jnz   UciUci
+		    stdcall   CmpString, 'setoption'
+		       test   eax, eax
+			jnz   UciSetOption
+		    stdcall   CmpString, 'go'
+		       test   eax, eax
+			jnz   UciGo
+		    stdcall   CmpString, 'position'
+		       test   eax, eax
+			jnz   UciPosition
+		    stdcall   CmpString, 'quit'
+		       test   eax, eax
+			jnz   UciQuit
+		    stdcall   CmpString, 'isready'
+		       test   eax, eax
+			jnz   UciIsReady
+
 		    stdcall   CmpString, 'pick'
 		       test   eax, eax
 			jnz   UciPick
@@ -56,24 +75,21 @@ UciGetInput:
 		    stdcall   CmpString, 'test'
 		       test   eax, eax
 			jnz   UciTest
-		    stdcall   CmpString, 'go'
+		    stdcall   CmpString, 'eval'
 		       test   eax, eax
-			jnz   UciGo
-		    stdcall   CmpString, 'position'
-		       test   eax, eax
-			jnz   UciPosition
-		    stdcall   CmpString, 'quit'
-		       test   eax, eax
-			jnz   UciQuit
+			jnz   UciEval
 UciUnknown:
 			lea   rdi, [Output]
 		    stdcall   PrintString, 'unknown command'
 			mov   al, 10
 		      stosb
-			lea   rcx, [Output]
-		       call   _WriteOut
-			jmp   UciGetInput
+			jmp   UciWriteOut
 
+
+UciIsReady:
+			lea   rdi, [Output]
+		    stdcall   PrintString, 'readyok'
+			jmp   UciWriteOut
 
 
 UciPick:
@@ -83,26 +99,14 @@ UciPick:
 
 
 UciGo:
-			cmp   byte [TimerThreadState], TIMER_STATE_TICKING
-			jne   .TimerGoodToGo
-			mov   rcx, qword [TimerThreadEndEvent]
-		       call   _SetEvent
- .TimerGoodToGo:
-
-			mov   dword [AlottedTime], 50
+ ;                       cmp   byte [TimerThreadState], TIMER_STATE_TICKING
+ ;                       jne   .TimerGoodToGo
+ ;                       mov   rcx, qword [TimerThreadEndEvent]
+ ;                      call   _SetEvent
+ ;.TimerGoodToGo:
 			mov   byte [Signals.stop], 0
-
-		       call   _GetTime
-			mov   qword [SearchStartTime], rax
-
-			mov   rcx, qword [SearchThreadStartEvent]
-		       call   _SetEvent
-			mov   rcx, qword [TimerThreadStartEvent]
-		       call   _SetEvent
-
-
-
-			jmp  UciGetInput
+		       call   ParseGo
+			jmp   UciGetInput
 
 UciPerftP:
 			xor   eax, eax
@@ -149,6 +153,15 @@ UciShow:
 		       call   PrintPosition
 			jmp   UciWriteOut
 
+UciEval:
+		       call   Evaluate
+			lea   rdi, [Output]
+			mov   ecx, eax
+		       call   PrintUciScore
+			mov   al, 10
+		      stosb
+			jmp   UciWriteOut
+
 UciCheck:
 			mov   rbx, qword [rbp+Pos.state]
 		       call   SetPositionState
@@ -183,6 +196,9 @@ UciUndo:
 			jns   .Undo
 			jmp   UciShow
 
+UciSetOption:
+		       call   ParseSetOption
+			jmp   UciGetInput
 UciMoves:
 		       call   ParseMoves
 			jmp   UciShow
@@ -196,6 +212,41 @@ UciTest:
 		    stdcall   PrintString, 'passed'
 			mov   al, 10
 		      stosb
+
+		    stdcall   PrintString, 'Gen_Captures:   '
+			mov   r15, rdi
+			mov   rbx, qword [rbp+Pos.state]
+			lea   rdi, [MoveList]
+		       call   Gen_Captures
+			mov   qword [rdi], 0
+			mov   rdi, r15
+			lea   rsi, [MoveList]
+			xor   r14d, r14d
+.MoveList:
+		      lodsq
+			mov   ecx, eax
+		       test   eax, eax
+			 jz   .MoveListDone
+		       call   PrintUciMove
+			mov   qword [rdi], rax
+			add   rdi, rdx
+			add   r14d, 1
+			and   r14d, 7
+			 jz   .MoveListNL
+			mov   al, ' '
+		      stosb
+			jmp   .MoveList
+.MoveListNL:
+			mov   al, 10
+		      stosb
+			mov   rax,'        '
+		      stosq
+		      stosq
+			jmp   .MoveList
+.MoveListDone:
+			mov   al, 10
+		      stosb
+
 			jmp   UciWriteOut
 
 
@@ -279,7 +330,139 @@ ParseMoves:	       push   rbx rsi rdi
 			ret
 
 
-ParseOptions:
-		       int3
 
 
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+ParseGo:	       push   rbx
+
+			xor   eax, eax
+			mov   ecx, 60000
+			mov   qword [MoveTime], rax
+			mov   qword [WTime], rcx
+			mov   qword [BTime], rcx
+			mov   qword [WInc], rax
+			mov   qword [BInc], rax
+			mov   dword [MovesToGo], 32
+			mov   dword [Limits.depth], -1
+
+	 .ReadLoop:
+		       call   SkipSpaces
+			cmp   byte [rsi], ' '
+			 jb   .ReadLoopDone
+		    stdcall   CmpString, 'wtime'
+		       test   eax, eax
+			jnz   .wtime
+		    stdcall   CmpString, 'btime'
+		       test   eax, eax
+			jnz   .btime
+		    stdcall   CmpString, 'winc'
+		       test   eax, eax
+			jnz   .winc
+		    stdcall   CmpString, 'binc'
+		       test   eax, eax
+			jnz   .binc
+		    stdcall   CmpString, 'movestogo'
+		       test   eax, eax
+			jnz   .movestogo
+		    stdcall   CmpString, 'ponder'
+		       test   eax, eax
+			jnz   .ponder
+		    stdcall   CmpString, 'movetime'
+		       test   eax, eax
+			jnz   .movetime
+		    stdcall   CmpString, 'depth'
+		       test   eax, eax
+			jnz   .depth
+		    stdcall   CmpString, 'infinite'
+		       test   eax, eax
+			jnz   .infinite
+		       call   SkipToken
+			jmp   .ReadLoop
+	.ReadLoopDone:
+
+			mov   rax, qword [MoveTime]
+		       test   rax, rax
+			jnz   .Return
+
+			mov   ecx, dword [rbp+Pos.sideToMove]
+		       fild   dword [MovesToGo]
+		       fild   qword [WTime+8*rcx]
+		       fild   qword [WInc+8*rcx]
+		       fld1
+		      fsubr   st0, st3
+		      fmulp   st1, st0
+		      faddp   st1, st0
+		     fdivrp   st1, st0
+		       push   rax
+		      fistp   qword [rsp]
+			pop   rax
+
+    .Return:		xor   ecx, ecx
+		       test   rax, rax
+		      cmovs   rax, rcx
+			mov   qword [AlottedTime], rax
+
+
+			lea   rcx, [threadPool]
+		       call   _ZN10ThreadPool14start_thinkingERK
+
+	       ;        call   _GetTime
+	       ;         mov   qword [SearchStartTime], rax
+	       ;
+	       ;         mov   rcx, qword [SearchThreadStartEvent]
+	       ;        call   _SetEvent
+	       ;         mov   rcx, qword [TimerThreadStartEvent]
+	       ;        call   _SetEvent
+
+			pop   rbx
+			ret
+
+
+	.wtime:        call  SkipSpaces
+		       call  ParseInteger
+			mov  qword [WTime], rax
+			jmp  .ReadLoop
+
+	.btime:        call  SkipSpaces
+		       call  ParseInteger
+			mov  qword [BTime], rax
+			jmp  .ReadLoop
+
+	.winc:	       call  SkipSpaces
+		       call  ParseInteger
+			mov  qword [WInc], rax
+			jmp  .ReadLoop
+
+	.binc:	       call  SkipSpaces
+		       call  ParseInteger
+			mov  qword [BInc], rax
+			jmp  .ReadLoop
+
+	.ponder:       call  SkipSpaces
+			jmp  .ReadLoop
+
+	.depth:        call  SkipSpaces
+		       call  ParseInteger
+			mov  dword [Limits.depth], eax
+			jmp  .ReadLoop
+
+	.infinite:     call  SkipSpaces
+			 or  eax,-1
+			mov  qword [MoveTime], rax
+			jmp  .ReadLoop
+
+	.movetime:     call  SkipSpaces
+		       call  ParseInteger
+			mov  qword [MoveTime], rax
+			jmp  .ReadLoop
+
+	.movestogo:    call  SkipSpaces
+		       call  ParseInteger
+			cmp  eax,1
+			adc  eax,1
+			mov  dword [MovesToGo], eax
+			jmp  .ReadLoop

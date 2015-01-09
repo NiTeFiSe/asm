@@ -63,7 +63,17 @@ IsMovePseudoLegal:
 			 jc   .ReturnFalse
 
 			and   r11d, 7
-			jmp   qword [IsMovePseudoLegal_JmpTable+8*r11]
+			jmp   qword [.JmpTable+8*r11]
+.JmpTable:
+		dq IsMovePseudoLegal.NoPiece
+		dq IsMovePseudoLegal.NoPiece
+		dq IsMovePseudoLegal.Pawn
+		dq IsMovePseudoLegal.Knight
+		dq IsMovePseudoLegal.Bishop
+		dq IsMovePseudoLegal.Rook
+		dq IsMovePseudoLegal.Queen
+		dq IsMovePseudoLegal.King
+
 
 		      align   8
     .NoPiece:
@@ -147,9 +157,9 @@ IsMovePseudoLegal:
 			 je   .DoublePawn
 			cmp   ecx, MOVE_TYPE_EPCAP
 			 je   .EpCapture
-			cmp   eax, MOVE_TYPE_PROM+4
+			cmp   ecx, MOVE_TYPE_PROM+4
 			jae   .ReturnFalse
-			cmp   eax, MOVE_TYPE_CASTLE
+			cmp   ecx, MOVE_TYPE_CASTLE
 			 je   .ReturnFalse
 			cmp   ecx, MOVE_TYPE_PROM
 			jae   .Promotion

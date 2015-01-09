@@ -58,14 +58,15 @@ GivesCheck:	; in:  rbp  address of Pos
 
 
 align 8
-.JmpTable:   dd 0
-	     dd 0
+.JmpTable:   dd .Error-GivesCheck
+	     dd .Error-GivesCheck
 	     dd .Castling-GivesCheck
 	     dd .EpCapture-GivesCheck
 	     dd .PromKnight-GivesCheck
 	     dd .PromBishop-GivesCheck
 	     dd .PromRook-GivesCheck
 	     dd .PromQueen-GivesCheck
+
 
 		      align   8
 .Castling:
@@ -151,3 +152,4 @@ align 8
 			pop   rdi rsi
 			ret
 
+.Error: int3

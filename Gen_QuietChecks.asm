@@ -16,9 +16,22 @@ Gen_QuietChecks:
 .PopLoop:
 			bsf   r13, r14
 		      _blsr   r14, r14, rax
-		      movzx   r12d, byte[rbp+Pos.typeBB+r13]
+		      movzx   r12d, byte[rbp+Pos.board+r13]
 			and   r12d, 7
-			jmp   qword [Gen_QuietChecks_JmpTable+8*r12]
+			jmp   qword [.JmpTable+8*r12]
+align 8
+.JmpTable:
+		dq 0;Gen_QuietChecks_Jmp.PopSkip
+		dq 0;Gen_QuietChecks_Jmp.PopSkip
+		dq Gen_QuietChecks.PopSkip
+		dq Gen_QuietChecks_Jmp.AttacksFromKnight
+		dq Gen_QuietChecks_Jmp.AttacksFromBishop
+		dq Gen_QuietChecks_Jmp.AttacksFromRook
+		dq Gen_QuietChecks_Jmp.AttacksFromQueen
+		dq Gen_QuietChecks_Jmp.AttacksFromKing
+
+
+
 .AttacksFromRet:
 			shl   r13d, 6
 		       test   rsi, rsi

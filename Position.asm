@@ -112,73 +112,159 @@ end virtual
 
 
 
-SetPositionState:	; in: rbp  address of Pos
+SetPositionState:
 
-	       push   rbx rsi rdi r12 r13 r14 r15
-		sub   rsp, 64
-		mov   rbx, qword [rbp+Pos.state]
+		; in: rbp  address of Pos
 
-		mov   rax, ZOBRIST_SIDE
-		mov   r15d, dword [rbp+Pos.sideToMove]
-	      movzx   ecx, byte [rbx+State.epSquare]
-	      movzx   edx, byte [rbx+State.castlingRights]
-		neg   r15
-		and   r15, ZOBRIST_SIDE
-		xor   r15, qword [Zobrist_Castling+8*rdx]
-		cmp   ecx, 64
-		jae   @f
-		and   ecx, 7
-		xor   r15, qword [Zobrist_Ep+8*rcx]
-		@@:
+		       push   rbx rsi rdi r12 r13 r14 r15
+			sub   rsp, 64
+			mov   rbx, qword [rbp+Pos.state]
 
-		xor   r14, r14
-		xor   r13, r13
+			mov   rax, Zobrist_Side
+			mov   r15d, dword [rbp+Pos.sideToMove]
+		      movzx   ecx, byte [rbx+State.epSquare]
+		      movzx   edx, byte [rbx+State.castlingRights]
+			neg   r15
+			and   r15, Zobrist_Side
+			xor   r15, qword [Zobrist_Castling+8*rdx]
+			cmp   ecx, 64
+			jae   @f
+			and   ecx, 7
+			xor   r15, qword [Zobrist_Ep+8*rcx]
+			@@:
 
-	      _pxor   xmm0, xmm0, xmm0	; npMaterial
-	    _movdqa   dqword [rsp], xmm0
+			xor   r14, r14
+			xor   r13, r13
 
-		xor   esi, esi
-.NextSquare:
-	      movzx   eax, byte [rbp+Pos.board+rsi]
-		mov   edx, eax
-		and   edx, 7	; edx = piece type
-		 jz   .Empty
+		      _pxor   xmm0, xmm0, xmm0	; npMaterial
+		    _movdqa   dqword [rsp], xmm0
 
-	       imul   ecx, eax, 64*8
-	      _movq   xmm1, qword [Scores_Pieces+rcx+8*rsi]
-	     _paddw   xmm0, xmm0, xmm1
+			xor   esi, esi
+	.NextSquare:
+		      movzx   eax, byte [rbp+Pos.board+rsi]
+			mov   edx, eax
+			and   edx, 7	; edx = piece type
+			 jz   .Empty
 
-		xor   r15, qword [Zobrist_Pieces+rcx+8*rsi]
-		cmp   edx, Pawn
-		jne   @f
-		xor   r14, qword [Zobrist_Pieces+rcx+8*rsi]
-	 @@:
-	      movzx   edx, byte [rsp+rax]
-		xor   r13, qword [Zobrist_Pieces+rcx+8*rdx]
-		add   edx, 1
-		mov   byte [rsp+rax], dl
-.Empty:
-		add   esi, 1
-		cmp   esi, 64
-		 jb   .NextSquare
+		       imul   ecx, eax, 64*8
+		      _movq   xmm1, qword [Scores_Pieces+rcx+8*rsi]
+		     _paddw   xmm0, xmm0, xmm1
 
-		mov   qword [rbx+State.key], r15
-		mov   qword [rbx+State.pawnKey], r14
-		mov   qword [rbx+State.materialKey], r13
-	      _movq   qword [rbx+State.psq], xmm0
+			xor   r15, qword [Zobrist_Pieces+rcx+8*rsi]
+			cmp   edx, Pawn
+			jne   @f
+			xor   r14, qword [Zobrist_Pieces+rcx+8*rsi]
+		 @@:
+		      movzx   edx, byte [rsp+rax]
+			xor   r13, qword [Zobrist_Pieces+rcx+8*rdx]
+			add   edx, 1
+			mov   byte [rsp+rax], dl
+	.Empty:
+			add   esi, 1
+			cmp   esi, 64
+			 jb   .NextSquare
 
-		mov   ecx, dword [rbp+Pos.sideToMove]
-		mov   rdx, qword [rbp+Pos.typeBB+8*King]
-		and   rdx, qword [rbp+Pos.typeBB+8*rcx]
-		bsf   rdx, rdx
-	       call   AttackersTo_Side
-		mov   qword [rbx+State.checkersBB], rax
+			mov   qword [rbx+State.key], r15
+			mov   qword [rbx+State.pawnKey], r14
+			mov   qword [rbx+State.materialKey], r13
+		      _movq   qword [rbx+State.psq], xmm0
 
-	       call   SetCheckInfo
+			mov   ecx, dword [rbp+Pos.sideToMove]
+			mov   rdx, qword [rbp+Pos.typeBB+8*King]
+			and   rdx, qword [rbp+Pos.typeBB+8*rcx]
+			bsf   rdx, rdx
+		       call   AttackersTo_Side
+			mov   qword [rbx+State.checkersBB], rax
 
-		add   rsp, 64
-		pop   r15 r14 r13 r12 rdi rsi rbx
-		ret
+		       call   SetCheckInfo
+
+			add   rsp, 64
+			pop   r15 r14 r13 r12 rdi rsi rbx
+			ret
+
+
+
+VerifyPositionState:
+
+		; in: rbp  address of Pos
+
+		       push   rbx rsi rdi r12 r13 r14 r15
+			sub   rsp, 64
+			mov   rbx, qword [rbp+Pos.state]
+
+			mov   rax, Zobrist_Side
+			mov   r15d, dword [rbp+Pos.sideToMove]
+		      movzx   ecx, byte [rbx+State.epSquare]
+		      movzx   edx, byte [rbx+State.castlingRights]
+			neg   r15
+			and   r15, Zobrist_Side
+			xor   r15, qword [Zobrist_Castling+8*rdx]
+			cmp   ecx, 64
+			jae   @f
+			and   ecx, 7
+			xor   r15, qword [Zobrist_Ep+8*rcx]
+			@@:
+
+			xor   r14, r14
+			xor   r13, r13
+
+		      _pxor   xmm0, xmm0, xmm0	; npMaterial
+		    _movdqa   dqword [rsp], xmm0
+
+			xor   esi, esi
+	.NextSquare:
+		      movzx   eax, byte [rbp+Pos.board+rsi]
+			mov   edx, eax
+			and   edx, 7	; edx = piece type
+			 jz   .Empty
+
+		       imul   ecx, eax, 64*8
+		      _movq   xmm1, qword [Scores_Pieces+rcx+8*rsi]
+		     _paddw   xmm0, xmm0, xmm1
+
+			xor   r15, qword [Zobrist_Pieces+rcx+8*rsi]
+			cmp   edx, Pawn
+			jne   @f
+			xor   r14, qword [Zobrist_Pieces+rcx+8*rsi]
+		 @@:
+		      movzx   edx, byte [rsp+rax]
+			xor   r13, qword [Zobrist_Pieces+rcx+8*rdx]
+			add   edx, 1
+			mov   byte [rsp+rax], dl
+	.Empty:
+			add   esi, 1
+			cmp   esi, 64
+			 jb   .NextSquare
+
+			cmp   qword [rbx+State.key], r15
+			jne   .Failed
+			cmp   qword [rbx+State.pawnKey], r14
+			jne   .Failed
+			cmp   qword [rbx+State.materialKey], r13
+			jne   .Failed
+		      _movq   rax, xmm0
+			cmp   qword [rbx+State.psq], rax
+			jne   .Failed
+
+			mov   ecx, dword [rbp+Pos.sideToMove]
+			mov   rdx, qword [rbp+Pos.typeBB+8*King]
+			and   rdx, qword [rbp+Pos.typeBB+8*rcx]
+			bsf   rdx, rdx
+		       call   AttackersTo_Side
+			cmp   qword [rbx+State.checkersBB], rax
+			jne   .Failed
+
+			 or   eax,-1
+			add   rsp, 64
+			pop   r15 r14 r13 r12 rdi rsi rbx
+			ret
+
+.Failed:
+			xor   eax, eax
+			add   rsp, 64
+			pop   r15 r14 r13 r12 rdi rsi rbx
+			ret
+
 
 
 
@@ -657,7 +743,7 @@ ParseFEN:
 	.Turn:
 		       call   SkipSpaces
 		      lodsb
-			xor   eax, eax
+			xor   ecx, ecx
 			cmp   al, 'b'
 		       sete   cl
 			mov   dword[rbp+Pos.sideToMove], ecx

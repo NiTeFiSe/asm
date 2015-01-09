@@ -46,6 +46,7 @@ end if
 			sub   rdi, 1
 			mov   ecx, dword [rsi]
 		       call   GivesCheck
+			mov   edx, eax
 			mov   ecx, dword [rsi]
 		       call   DoMove_SetCheckInfo
 			lea   ecx, [r15-1]

@@ -1,0 +1,49 @@
+fasm chess engine based on stockfish
+_ZN10MainThread9idle_loopEv start
+_ZN10MainThread9idle_loopEv before wait
+go movetime 30000 depth 8
+_ZN10MainThread9idle_loopEv after wait
+info depth 1 time 0 score cp 61 nodes 20 nps 20000 multipv 1 pv g1f3
+info depth 2 time 1 score cp 5 nodes 182 nps 182000 multipv 1 pv g1f3 b8c6
+info depth 3 time 6 score cp 59 nodes 2298 nps 383000 multipv 1 pv g1f3 b8c6 b1c3
+info depth 4 time 24 score cp 5 nodes 22597 nps 941541 multipv 1 pv g1f3 b8c6 b1c3 g8f6
+info depth 5 time 85 score cp 43 nodes 320979 nps 3776223 multipv 1 pv g1f3 b8c6 b1c3 g8f6 e2e4
+info depth 6 time 499 score cp 9 nodes 3261110 nps 6535290 multipv 1 pv c2c4 b8c6 g1f3 g8h6 b1c3 h6f5
+info depth 7 time 4170 score cp 68 nodes 26796053 nps 6425911 multipv 1 pv b1c3 d7d5 d2d4 g8f6 g1f3 b8d7 c1f4
+info depth 8 time 12268 score cp 31 nodes 79286236 nps 6462849 multipv 1 pv b1c3 g8f6 d2d4 e7e6 g1f3 b8c6 c1f4 f8b4
+bestmove b1c3 ponder g8f6
+_ZN10MainThread9idle_loopEv before wait
+
+
+position fen r1b3k1/1p3ppp/4N3/p7/2Br3K/1P2n1P1/P2n2qP/R2Q3R w - - 12 1
+
+position fen r5k1/5qp1/8/Pp6/3P2R1/b5P1/3Q1P2/5RK1 w - - 1 1
+moves f1e1 a3d6 f2f4 f7c4 f4f5 b5b4 f5f6 a8a5 f6g7
+
+d6g3
+g7g8q
+
+
+a8a5 f1g1 g8h8 f2f1
+
+
+
+
+moves d2d4 d7d5 c2c4 c7c6 c4d5 c6d5 g1f3 b8c6
+
+fasm chess engine based on stockfish
+position fen r1b3k1/1p3ppp/4N3/p7/2Br3K/1P2n1P1/P2n2qP/R2Q3R w - - 12 1
+go
+info depth 1 time 0 score cp 117 nodes 6 nps 6000 multipv 1 pv e6d4
+info depth 2 time 0 score cp -1104 nodes 59 nps 59000 multipv 1 pv e6d4 e3d1
+info depth 3 time 1 score cp -698 nodes 319 nps 319000 multipv 1 pv e6d4 e3d1 a1d1
+info depth 4 time 1 score cp -1132 nodes 1981 nps 1981000 multipv 1 pv e6d4 e3d1 h1d1 d2c4
+info depth 5 time 4 score mate -2 nodes 16563 nps 4140750 multipv 1 pv e6d4 g2h3 h4g5 h3h6
+info depth 6 time 15 score mate -2 nodes 204916 nps 13661066 multipv 1 pv e6d4 g2h3 h4g5 h3h6
+info depth 7 time 71 score mate -2 nodes 802523 nps 11303140 multipv 1 pv e6d4 g2h3 h4g5 h3h6
+info depth 8 time 545 score mate -2 nodes 10269636 nps 18843368 multipv 1 pv e6d4 g2h3 h4g5 h3h6
+info depth 9 time 1871 score mate -2 nodes 24264638 nps 12968807 multipv 1 pv e6d4 g2h3 h4g5 h3h6
+bestmove e6d4 ponder g2h3
+
+
+

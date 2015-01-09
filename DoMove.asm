@@ -11,7 +11,7 @@ DoMove:
 
 			mov   esi, dword [rbp+Pos.sideToMove]
 
-			mov   r15, ZOBRIST_SIDE
+			mov   r15, Zobrist_Side
 
 			mov   r8d, ecx
 			shr   r8d, 6

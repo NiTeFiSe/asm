@@ -2,13 +2,18 @@ format PE64 console
 entry Start
 ;org 0x04000
 
-DEBUG = 0
-
 include 'win64axp.inc'
-include 'Structs.inc'
 include 'Def.inc'
+include 'Structs.inc'
 include 'Functions.inc'
 include 'assert.inc'
+
+
+;;;;;;;;;;;;;;;;;;;
+;                 ;
+; compile options ;
+;                 ;
+;;;;;;;;;;;;;;;;;;;
 
  ; special instruction sets
  ;  HAVE_POPCNT   popcnt
@@ -17,10 +22,57 @@ include 'assert.inc'
  ;  HAVE_BMI1     andn
  ;  HAVE_BMI2     pext + pdep                           (nice for move generation)
  ; just add the ones you have into HAVE:
-HAVE = 0 + HAVE_POPCNT + HAVE_AVX1; + HAVE_AVX2 + HAVE_BMI1 + HAVE_BMI2
+HAVE = 0 + HAVE_POPCNT + HAVE_AVX1 + HAVE_AVX2 + HAVE_BMI1 + HAVE_BMI2
+DEBUG = 0
+DISPLAY_CURRMOVE = 0
 
 
 section '.data' data readable writeable
+
+
+; nasty stuff from c++ threads, should be cleaned up in a future version
+align 32
+_ZTV11TimerThread:					; byte
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0000 _ ........
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0008 _ ........
+	dq _ZN11TimerThreadD1Ev 			; 0010 _ 0000000000000000 (d)
+	dq _ZN11TimerThreadD0Ev 			; 0018 _ 0000000000000000 (d)
+	dq _ZN11TimerThread9idle_loopEv 		; 0020 _ 0000000000000070 (d)
+	dq 0000000000000000H				; 0028 _ 0000000000000000 
+	dq 0000000000000000H				; 0030 _ 0000000000000000 
+	dq 0000000000000000H				; 0038 _ 0000000000000000
+align 32
+_ZTV10MainThread:					; byte
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0000 _ ........
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0008 _ ........
+	dq _ZN10MainThreadD1Ev				; 0010 _ 0000000000000000 (d)
+	dq _ZN10MainThreadD0Ev				; 0018 _ 0000000000000000 (d)
+	dq _ZN10MainThread9idle_loopEv			; 0020 _ 0000000000000100 (d)
+	dq 0000000000000000H				; 0028 _ 0000000000000000 
+	dq 0000000000000000H				; 0030 _ 0000000000000000 
+	dq 0000000000000000H
+align 32
+_ZTV6Thread:						; byte
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0000 _ ........
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0008 _ ........
+	dq _ZN6ThreadD1Ev				; 0010 _ 0000000000000000 (d)
+	dq _ZN6ThreadD0Ev				; 0018 _ 0000000000000000 (d)
+	dq _ZN6Thread9idle_loopEv			; 0020 _ 00000000000003BC (d)
+	dq 0000000000000000H				; 0028 _ 0000000000000000
+	dq 0000000000000000H				; 0030 _ 0000000000000000
+	dq 0000000000000000H				; 0038 _ 0000000000000000
+align 32
+_ZTV10ThreadBase:					; byte
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0000 _ ........
+	db 00H, 00H, 00H, 00H, 00H, 00H, 00H, 00H	; 0008 _ ........
+	dq _ZN10ThreadBaseD1Ev				; 0010 _ 0000000000000000 (d)
+	dq _ZN10ThreadBaseD0Ev				; 0018 _ 0000000000000000 (d)
+	dq 0;__cxa_pure_virtual                           ; 0020 _ 0000000000000000 (d)
+	dq 0000000000000000H				; 0028 _ 0000000000000000 
+	dq 0000000000000000H				; 0030 _ 0000000000000000 
+	dq 0000000000000000H				; 0038 _ 0000000000000000 
+
+
 
 
 align 16
@@ -28,61 +80,26 @@ align 16
  RandInc    dd 0x23498764,0x1F8A58B3,0x12345C78,0x8D654321
 
 align 8
-BitBoard_Rank8	   dq 1111111100000000000000000000000000000000000000000000000000000000b
-BitBoard_Rank1	   dq 0000000000000000000000000000000000000000000000000000000011111111b
-BitBoard_FileA	   dq 0000000100000001000000010000000100000001000000010000000100000001b
-BitBoard_FileH	   dq 1000000010000000100000001000000010000000100000001000000010000000b
-BitBoard_Corners   dq 0111111011111111111111111111111111111111111111111111111101111110b
+ BitBoard_Rank8     dq 1111111100000000000000000000000000000000000000000000000000000000b
+ BitBoard_Rank1     dq 0000000000000000000000000000000000000000000000000000000011111111b
+ BitBoard_FileA     dq 0000000100000001000000010000000100000001000000010000000100000001b
+ BitBoard_FileH     dq 1000000010000000100000001000000010000000100000001000000010000000b
+ BitBoard_Corners   dq 0111111011111111111111111111111111111111111111111111111101111110b
 if ~(HAVE and HAVE_POPCNT)
-Mask55	  dq 0x5555555555555555
-Mask33	  dq 0x3333333333333333
-Mask0F	  dq 0x0F0F0F0F0F0F0F0F
-Mask01	  dq 0x0101010101010101
+ Mask55    dq 0x5555555555555555
+ Mask33    dq 0x3333333333333333
+ Mask0F    dq 0x0F0F0F0F0F0F0F0F
+ Mask01    dq 0x0101010101010101
 end if
-
-align 8
-Gen_QuietChecks_JmpTable:
-		dq 0;Gen_QuietChecks_Jmp.PopSkip
-		dq 0;Gen_QuietChecks_Jmp.PopSkip
-		dq Gen_QuietChecks.PopSkip
-		dq Gen_QuietChecks_Jmp.AttacksFromKnight
-		dq Gen_QuietChecks_Jmp.AttacksFromBishop
-		dq Gen_QuietChecks_Jmp.AttacksFromRook
-		dq Gen_QuietChecks_Jmp.AttacksFromQueen
-		dq Gen_QuietChecks_Jmp.AttacksFromKing
-;GivesCheck_JmpTable:
-;                dq 0
-;                dq 0
-;                dq GivesCheck.Castling
-;                dq GivesCheck.EpCapture
-;                dq GivesCheck.PromKnight
-;                dq GivesCheck.PromBishop
-;                dq GivesCheck.PromRook
-;                dq GivesCheck.PromQueen
-
-IsMovePseudoLegal_JmpTable:
-		dq IsMovePseudoLegal.NoPiece
-		dq IsMovePseudoLegal.NoPiece
-		dq IsMovePseudoLegal.Pawn
-		dq IsMovePseudoLegal.Knight
-		dq IsMovePseudoLegal.Bishop
-		dq IsMovePseudoLegal.Rook
-		dq IsMovePseudoLegal.Queen
-		dq IsMovePseudoLegal.King
-
-
-
-
-;0xF386
-;1111 001110 000110
 
 align 4
 DrawValue dd 0,0
 
+
 align 1
- szUCIresponse	      db 'id name fasm chess engine',10
-		      db 'id author tthsqe',10
-		      db 'option name Hash type spin min 16 max 65536 default 128',10
+ szUCIresponse	      db 'id name another chess engine',10
+		      db 'id author fasm',10
+		      db 'option name Hash type spin min 1 max 65536 default 16',10
 		      db 'option name MultiPV type spin min 1 max 64 default 1',10
 		      db 'option name Ponder type check default false',10
 		      db 'option name Threads type spin min 1 max 8 default 1',10
@@ -124,75 +141,70 @@ if DEBUG
 perft_ok db ?
 end if
 
-;include 'Pst.inc'
-
 include 'psqr.inc'
 
-align 16
- hThreadArray	 rq 64
+;align 16
+; hThreadArray    rq 64
 
 
 align 8
  Counter	dq ?
  Frequency	dq ?
  Period 	dq ?
- ProcessAffinityMask dq ?
- SystemAffinityMask  dq ?
+; ProcessAffinityMask dq ?
+; SystemAffinityMask  dq ?
  hStdOut	  dq ?
  hStdIn 	  dq ?
  hStdError	  dq ?
  hSearchThread	 dq ?
- hTimerThread	 dq ?
+; hTimerThread    dq ?
  MoveTime	 dq ?
  WTime		 dq ?
  BTime		 dq ?
  WInc		 dq ?
  BInc		 dq ?
  MovesToGo	 dq ?
- temp		 dq ?
  SearchStartTime dq ?
+ AlottedTime	 rq 1
 
-align 4
- MultiPV      dd ?
- Ponder       dd ?
- Threads      dd ?
- AlottedTime	 rd 1
-
-align 4
- RootDepth	   dd ?
- Score		   dd ?
- BestMove	   dw ?
- PonderMove	   dw ?
- SearchThreadStartEvent  rq 1
- TimerThreadStartEvent	 rq 1
- TimerThreadEndEvent	 rq 1
-
-align 1
- PerftProblem	    db ?
- SearchThreadState  db ?
- TimerThreadState   db ?
 
 
 align 8
 Signals:
-
  .stop rb 1
+
+align 8
+Limits:
+ .depth rd 1
+
+
+align 16
+ Input		 rb 8*1024
+ Output 	 rb 4*1024
+align 8
+ MoveList	 rd 1024
+ MoveList1	 rd 1024
 
 
 
 section '.rdata' data readable writeable
 
-align 8
- History	  rd 64*64
-
-align 8
- KillerMoves	       rd 64
-
-
-;;;;;;;;;;;;;;;;;;;;;;;; structures for position searcing ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+align 16
+ uciOptions  rb sizeof.UciOptions
+ threadPool  rb sizeof.ThreadPool
+ timerThread rb sizeof.TimerThread
+ mainThread  rb sizeof.MainThread
+	     rb sizeof.Thread*(MAX_THREADS-1)
+ rootMoves   rb sizeof.RootMoves
+ hashTable   rb sizeof.TT
 
 align 16
- HashTable  rb sizeof.TT
+ History	  rd 64*64
+ KillerMoves	  rd 64
+
+
+align 16
+
 align 32
  BoardPosition	 rb sizeof.Pos
 
@@ -202,18 +214,8 @@ align 32
 align 32
  SearchStack	 rb 1024*sizeof.Stack
 
-align 8
- MoveList	 rd 1024
- MoveList1	 rd 1024
-
-align 16
- Input		 rb 8*1024
- Output 	 rb 4*1024
-
-
 
 section '.bss' data readable writeable
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;; data for move generation  ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -238,25 +240,9 @@ BetweenBB:
 PawnAttacks:
  WhitePawnAttacks    rq 64     ; bitboards
  BlackPawnAttacks    rq 64     ; bitboards
-;PawnMoves:
-; WhitePawnMoves      rq 64     ; bitboards
-; BlackPawnMoves      rq 64     ; bitboards
-
-; WhitePawnPromRank   rq 1      ; bitboard
-; WhitePawnHomeRank   rq 1      ; bitboard
-; BlackPawnPromRank   rq 1      ; bitboard
-; BlackPawnHomeRank   rq 1      ; bitboard
  KnightAttacks	     rq 64     ; bitboards
  KingAttacks	     rq 64     ; bitboards
-; SquareDistance      rb 64*64
  FileBB 	     rq 8
-; CastlingMasks       rb 64     ; masks, 8 bits
-; CastlingOOClear     rq 2
-; CastlingOOOClear    rq 2
-; CastlingOOCheck     rq 2
-; CastlingOOOCheck    rq 2
-; CastlingOOMove      rd 2
-; CastlingOOOMove     rd 2
 
 ;;;;;;;;;;;;;;;;;;;; DoMove data ;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -279,23 +265,31 @@ IsPawnMasks:	  rb 16
 ;;;;;;;;;;;;;;;;;;;; data for evaluation ;;;;;;;;;;;;;;;;;;;;;;;
 
 align 64
- SwapValues	     rd 8
  WhitePassedPawns    rq 64    ; bitboards
  BlackPassedPawns    rq 64    ; bitboards
  IsolatedPawns	     rq 64    ; bitboards
  KPKEndgameTable     rq 48*64 ; bit table for lookup
 
+
+
 section '.code' code readable executable
 
-include 'gen_macro.inc'
-include 'pick_macro.inc'
-include 'search_macro.inc'
-include 'qsearch_macro.inc'
+include 'Gen.inc'
+include 'Pick.inc'
+include 'Search.inc'
+include 'QSearch.inc'
+include 'HashTable.inc'
 
 
+include 'ThreadPool.asm'
+include 'ThreadBase.asm'
 include 'Thread.asm'
-include 'Timer.asm'
+include 'TimerThread.asm'
+include 'MainThread.asm'
+include 'PositionCopy.asm'
+include 'Think.asm'
 
+include 'HashTable_Probe.asm'
 include 'Update.asm'
 include 'QSearch.asm'
 include 'Search.asm'
@@ -324,13 +318,12 @@ include 'IsMovePseudoLegal.asm'
 include 'MovePick.asm'
 include 'See.asm'
 
-;include 'tt_hot.inc'
-
-
 include 'Position.asm'
 include 'HashTable.asm'
 include 'Uci.asm'
+include 'UciOptions.asm'
 
+include 'Print.asm'
 include 'Misc.asm'
 
 include 'Windows.asm'
@@ -341,54 +334,30 @@ Start:
 			and   rsp, -32
 			sub   rsp, 32
 
-		; get stuff from os
 		       call   _SetStdHandles
 		       call   _SetFrequency
-		       call   _SetAffinityMasks
 		       call   _CheckCPU
 
-		; initialize stuff
-			mov   ecx, 128
+		       call   UciOptions_Init
+			mov   ecx, dword [uciOptions+UciOptions.hash]
 		       call   HashTable_Allocate
 		       call   Initialize_MoveGen
 		       call   Initialize_DoMove
 		       call   InitializeTables
+			lea   rcx, [threadPool]
+		       call   _ZN10ThreadPool4initEv
 
-
-		; start search thread
-			mov   ecx, FALSE
-			mov   edx, FALSE
-		       call   _CreateEvent
-			mov   qword [SearchThreadStartEvent], rax
-			lea   rcx, [SearchThread]
-			xor   edx, edx
-			xor   r8, r8
-		       call   _CreateThread
-			mov   qword [hSearchThread], rax
-
-		; start timer thread
-			mov   ecx, FALSE
-			mov   edx, FALSE
-		       call   _CreateEvent
-			mov   qword [TimerThreadStartEvent], rax
-			mov   ecx, FALSE
-			mov   edx, FALSE
-		       call   _CreateEvent
-			mov   qword [TimerThreadEndEvent], rax
-			lea   rcx, [TimerThread]
-			xor   edx, edx
-			xor   r8d, r8d
-		       call   _CreateThread
-			mov   qword [hTimerThread], rax
-
-
-	; loop
 		       call   UciLoop
 
-	; clean up
+			lea   rcx, [threadPool]
+		       call   _ZN10ThreadPool4exitEv
 		       call   HashTable_Free
+
 			xor   ecx, ecx
 		       call   _ExitProcess
+
+
+
 
 section '.idata' import data readable writeable
 

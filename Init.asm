@@ -707,7 +707,7 @@ macro KPKEndgameTableOffset res,TN,WP,WK,BK {
 			add  res,BK
 			shl  res,1
 			add  res,TN
-			add  res,qword[HashTable+TT.mem]
+			add  res,qword[hashTable+TT.table]
 }
 
 		; KPKEndgameTable[WhitePawn-8][WhiteKing] is a qword
@@ -715,7 +715,7 @@ macro KPKEndgameTableOffset res,TN,WP,WK,BK {
 		;  bit 2*BlackKing+1 is set if win for black to move
 
 		; use hash table for uncompressed data
-			mov  rdi,qword[HashTable+TT.mem]
+			mov  rdi,qword[hashTable+TT.table]
 			mov  ecx,(64*64*2*64)/8
 			xor  eax,eax
 		  rep stosq
@@ -894,7 +894,7 @@ macro KPKEndgameTableOffset res,TN,WP,WK,BK {
 
 .End:
 		   ; clear part of hash table that was messed up
-			mov  rdi,qword[HashTable+TT.mem]
+			mov  rdi,qword[hashTable+TT.table]
 			mov  ecx,(64*64*2*64)/8
 			xor  eax,eax
 		  rep stosq
@@ -1019,7 +1019,7 @@ Init_WhitePassedPawns:
 			mov  ecx,r14d
 			shr  ecx,3
 			cmp  ecx,eax
-			jae  @f
+			jbe  @f
 			bts  r13,r14
 		@@:	add  r14d,1
 			cmp  r14d,64
@@ -1049,7 +1049,7 @@ Init_BlackPassedPawns:
 			mov  ecx,r14d
 			shr  ecx,3
 			cmp  ecx,eax
-			jbe  @f
+			jae  @f
 			bts  r13,r14
 		@@:	add  r14d,1
 			cmp  r14d,64

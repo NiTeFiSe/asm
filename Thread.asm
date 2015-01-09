@@ -1,144 +1,132 @@
-CopyPositionToThread:
 
-		; in: rbp address of destination Pos
-		;     rbx address of source Pos
 
-		       push   rsi rdi
 
-		; copy typeBB and board
-			lea   rsi, [rbx+Pos.typeBB]
-			lea   rdi, [rbp+Pos.typeBB]
-			mov   ecx, 128/8
-		  rep movsq
+_ZN6ThreadC2Ev:
+		       push   rbp rsi rbx
+			mov   rsi, rcx
+		       call   _ZN10ThreadBaseC2Ev
+			lea   rax, [_ZTV6Thread+10H]
+			lea   rbx, [rsi+Thread.splitPoints]
+			lea   rbp, [rbx+MAX_SPLITPOINTS_PER_THREAD*sizeof.SplitPoint]
+			mov   qword [rsi+Thread.junk], rax
+		@@:	lea   rcx, [rbx+SplitPoint.mutex]
+		       call   _MutexCreate
+			xor   eax, eax
+			mov   qword [rbx+SplitPoint.slavesMask+0], rax
+			mov   qword [rbx+SplitPoint.slavesMask+8], rax
+			add   rbx, sizeof.SplitPoint
+			cmp   rbx, rbp
+			jnz   @b
+			lea   rcx, [rsi+Thread.materialTable]
+		     ;  call    _ZN9HashTableIN8Material5EntryELi8192EEC1Ev
+			lea   rcx, [rsi+Thread.endgames]
+		     ;  call    _ZN8EndgamesC1Ev
+			lea   rcx, [rsi+Thread.pawnsTable]
+		     ;  call    _ZN9HashTableIN5Pawns5EntryELi16384EEC1Ev
+			xor   eax, eax
+			mov   qword [rsi+Thread.activePosition], rax
+			mov   dword [rsi+Thread.maxPly], eax
+			mov   qword [rsi+Thread.activeSplitPoint], rax
+			mov   dword [rsi+Thread.splitPointsSize], eax
+			mov   byte [rsi+Thread.searching], al
+			lea   rdx, [threadPool]
+			mov   rax, qword [rdx+ThreadPool.end]
+			sub   rax, qword [rdx+ThreadPool.start]
+			xor   edx, edx
+			mov   ecx, sizeof.Thread
+			div   ecx
+		     assert   e, edx, 0, 'weird remainder in _ZN6ThreadC2Ev'
+			mov   qword [rsi+Thread.idx], rax
+			pop   rbx rsi rbp
+			ret
 
-		; copy gamePly and sideToMove
-			mov   rax, qword [rbx+Pos.gamePly]
-			mov   qword [rbp+Pos.gamePly], rax
 
-		; copy relevent State elements
-			mov   rcx, [rbx+Pos.state]
-			mov   esi, 99
-		      movzx   eax, [rcx+State.rule50]
-			cmp   esi, eax
-		      cmova   esi, eax
-		      movzx   eax, [rcx+State.pliesFromNull]
-			cmp   esi, eax
-		      cmova   esi, eax
 
-		       imul   esi, sizeof.State
-			mov   rdi, qword [rbp+Pos.stateTable]
-			lea   rax, [rdi+rsi]
-			mov   qword [rbp+Pos.state], rax
-			lea   ecx, [rsi+sizeof.State]
-			neg   rsi
-			add   rsi, qword [rbx+Pos.state]
-			shr   ecx, 3
-		  rep movsq
+_ZN6Thread9idle_loopEv:
 
-			pop   rdi rsi
+		       int3
+
+
+
+
+
+_ZN6ThreadD2Ev:
+	; rcx: address of thread
+		       push    rbp rsi rbx
+			lea	rax, [_ZTV6Thread+10H]		    ; 0008 _ 48: 8D. 05, 00000010(rel)
+			mov	rbp, rcx				; 000F _ 48: 89. CD
+			mov	qword [rcx+Thread.junk], rax			    ; 0012 _ 48: 89. 01
+			mov	rcx, qword [rcx+Thread.pawnsTable]		     ; 0015 _ 48: 8B. 89, 00000580
+			call	_ZdlPv					; 0021 _ E8, 00000000(rel)
+			lea	rcx, [rbp+Thread.endgames]			   ; 0026 _ 48: 8D. 8D, 00000520
+			call	_ZN8EndgamesD1Ev			; 002D _ E8, 00000000(rel)
+			mov	rcx, qword [rbp+Thread.materialTable]			; 0032 _ 48: 8B. 8D, 00000508
+			call	_ZdlPv					; 003E _ E8, 00000000(rel)
+			lea	rsi, [rbp+Thread.splitPoints]	; 72                       ; 0043 _ 48: 8D. 75, 48
+			lea	rbx, [rsi+MAX_SPLITPOINTS_PER_THREAD*sizeof.SplitPoint]  ; 1288                       ; 0047 _ 48: 8D. 9D, 00000508
+			jmp	._056					; 0055 _ EB, 0D
+._055:
+			sub	rbx, sizeof.SplitPoint				      ; 0057 _ 48: 81. EB, 00000098
+			lea	rcx, [rbx+SplitPoint.mutex]			     ; 005E _ 48: 8D. 4B, 38
+			call	_MutexDestroy					  ; 0062 _ FF. D7
+._056:
+			cmp	rbx, rsi				; 0064 _ 48: 39. F3
+			jnz	._055					; 0067 _ 75, EE
+			mov	rcx, rbp				; 0069 _ 48: 89. E9
+			pop	rbx rsi rbp
+			jmp	_ZN10ThreadBaseD2Ev
+
+
+_ZN6ThreadD0Ev:; first calls 1, then deletes self. no need to delete here, so just call 1
+_ZN6ThreadD1Ev:
+		       push   rdi rsi rbx
+			lea   rax, [_ZTV6Thread+10H]		  ; 0007 _ 48: 8D. 05, 00000010(rel)
+			mov   rbx, rcx				      ; 000E _ 48: 89. CB
+			mov   qword [rcx], rax			      ; 0011 _ 48: 89. 01
+			mov   rcx, qword [rcx+580H]		      ; 0014 _ 48: 8B. 89, 00000580
+		       call   _ZdlPv
+			lea   rcx, [rbx+520H]			      ; 0025 _ 48: 8D. 8B, 00000520
+		       call   _ZN8EndgamesD1Ev			      ; 002C _ E8, 00000000(rel)
+			mov   rcx, qword [rbx+508H]		      ; 0031 _ 48: 8B. 8B, 00000508
+		       call   _ZdlPv
+			lea   rdi, [rbx+48H]
+			lea   rsi, [rbx+508H]
+._0761:
+			cmp   rsi, rdi
+			 jz   ._0762
+			sub   rsi, 152
+			lea   rcx, [rsi+38H]
+		       call   _MutexDestroy
+			jmp   ._0761
+._0762:
+			lea   rcx, [_ZTV10ThreadBase+10H]
+			mov   qword [rbx+Thread.junk], rcx
+			mov   rcx, qword [rbx+Thread.sleepCondition]
+		       call   _EventDestroy
+			lea   rcx, [rbx+Thread.mutex]
+			pop   rbx rsi rdi
+			jmp   _MutexDestroy
+
+
+
+_ZN8EndgamesD1Ev:
 			ret
 
 
 
 
-SearchThread:
-			and   rsp, -32
-
-		; put the Pos structure on the stack
-			sub   rsp, sizeof.Pos
-			mov   rbp, rsp
-
-		; allocate space for search stack
-			mov   ecx, (MAX_PLY+4)*sizeof.Stack
-		       call   _VirtualAlloc
-			mov   qword [rbp+Pos.ssTable], rax
-
-		; allocate space for states
-			mov   ecx, (MAX_PLY+100)*sizeof.State
-		       call   _VirtualAlloc
-			mov   qword [rbp+Pos.stateTable], rax
-
-		; allocate space for pawn hash
-			mov   ecx, 1024
-		       call   _VirtualAlloc
-			mov   qword [rbp+Pos.pawnsTable], rax
-
-		; allocate space for material hash
-			mov   ecx, 1024
-		       call   _VirtualAlloc
-			mov   qword [rbp+Pos.materialTable], rax
-
-
-.WaitForWork:
-			mov  byte [SearchThreadState],THREAD_STATE_WAIT
-
-			mov   rcx, [SearchThreadStartEvent]
-			 or   edx, -1
-		       call   _WaitEvent
-
-			mov  byte[SearchThreadState],THREAD_STATE_SEARCH
-
-			jmp  .Search
-
-
-		      align   8
-.Search:
-
-
-			lea   rbx, [BoardPosition]
-		       call   CopyPositionToThread
-
-			xor   r15d, r15d
-
-		; clear portion of search stack and set Pos.ss
-			mov   rdi, qword [rbp+Pos.ssTable]
-			lea   r14, [rdi+2*sizeof.Stack]
-			mov   qword [rbp+Pos.ss], r14
-			mov   ecx, sizeof.Stack/8
-			xor   eax, eax
-		  rep stosq
-
-		;
 
 
 
-       .IdLoop:
-			add   r15d, 1
-
-			mov   ecx, -VALUE_INFINITE
-			mov   edx, +VALUE_INFINITE
-			mov   r8d, r15d
-			mov   r9, r14
-			xor   r10, r10
-		       call   Search_Root
-
-		       call   PrintUciInfo
-
-			cmp   byte [Signals.stop], 0
-			 je   .IdLoop
 
 
-			lea  rdi, [Output]
+_ZdlPv:
+	ret
 
-			mov  rax, 'bestmove'
-		      stosq
-			mov  al, ' '
-		      stosb
-		      movzx  ecx, word [BestMove]
-		       call  PrintUciMove
-			mov  qword [rdi], rax
-			add  rdi, rdx
 
-			mov  rax, ' ponder '
-		      stosq
-		      movzx  ecx, word [PonderMove]
-		       call  PrintUciMove
-			mov  qword [rdi], rax
-			add  rdi, rdx
 
-			mov  eax,10
-		      stosb
-			lea  rcx,[Output]
-		       call  _WriteOut
 
-			jmp  .WaitForWork
+
+
+
+

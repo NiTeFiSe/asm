@@ -46,7 +46,7 @@ end virtual
 			mov   word [rsi+Pick.followupmoves+2*1], 0
 			mov   byte [rsi+Pick.recaptureSquare], 64
 			xor   ecx, ecx
-		       call   MovePick_Init
+		       call   MovePick_Init_Search
 .GenNext:
 		GetNextMove
 			mov   dword [.move], eax
@@ -170,7 +170,7 @@ end virtual
 			mov   word [rsi+Pick.followupmoves+2*1], 0
 			mov   byte [rsi+Pick.recaptureSquare], 64
 			xor   ecx, ecx
-		       call   MovePick_Init
+		       call   MovePick_Init_Search
 .GenNext:
 		GetNextMove
 			mov   dword [.move], eax

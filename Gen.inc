@@ -278,7 +278,7 @@ match =Black, Us \{
 		      align   8
 .CheckProm:
 
-    if (Type eq CAPTURE)
+    if (Type eq CAPTURES)
 			mov   .eS, r14
 			not   .eS
     end if
@@ -722,6 +722,7 @@ else
 			and   r10, r14
 			and   r11, r14
 end if
+
 
 if Type in <QUIET_CHECKS, EVASIONS>
 else

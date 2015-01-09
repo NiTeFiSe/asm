@@ -1,46 +1,69 @@
 
+PAGE_SIZE = 4*1024
+
+	align	16
+__chkstk_ms:
+	push	rcx
+	push	rax
+	cmp	rax, PAGE_SIZE
+	lea	rcx, [rsp + 24]
+	jb	._LessThanAPage
+._MoreThanAPage:
+	sub	rcx, PAGE_SIZE
+	or	byte[rcx], 0
+	sub	rax, PAGE_SIZE
+	cmp	rax, PAGE_SIZE
+	ja	._MoreThanAPage
+._LessThanAPage:
+	sub	rcx, rax
+	or	byte[rcx], 0
+	pop	rax
+	pop	rcx
+	ret
+
+
 
 Rand64:
-	       call   GetRand
-		mov   ecx, eax
-	       call   GetRand
-		shl   eax, 16
-		 or   ecx, eax
-	       call   GetRand
-		shl   rax, 32
-		 or   rcx, rax
-	       call   GetRand
-		shl   rax, 48
-		 or   rax, rcx
-		ret
+		       call   GetRand
+			mov   ecx, eax
+		       call   GetRand
+			shl   eax, 16
+			 or   ecx, eax
+		       call   GetRand
+			shl   rax, 32
+			 or   rcx, rax
+		       call   GetRand
+			shl   rax, 48
+			 or   rax, rcx
+			ret
 
 
 
 
 
 GetRand:      ; get 16 random bits in ax
-		     movdqa  xmm0,dqword[RandSeed]
-		     movdqa  xmm1,xmm0
-		     movdqa  xmm2,xmm0
-		     pslldq  xmm1,1
-		     psrldq  xmm2,15
-			por  xmm1,xmm2
-		     movdqa  xmm2,xmm0
-		      psllq  xmm2,1
-			por  xmm1,xmm2
-		     movdqa  xmm2,xmm0
-		     movdqa  xmm3,xmm0
-		     psrldq  xmm2,1
-		     pslldq  xmm3,15
-			por  xmm2,xmm3
-		     movdqa  xmm3,xmm0
-		      psrlq  xmm3,1
-		       pxor  xmm2,xmm3
-			por  xmm0,xmm1
-		       pxor  xmm0,xmm2
-		   pmovmskb  eax,xmm0
-		      paddq  xmm0,dqword[RandInc]
-		     movdqa  dqword[RandSeed],xmm0
+		     movdqa  xmm0, dqword [RandSeed]
+		     movdqa  xmm1, xmm0
+		     movdqa  xmm2, xmm0
+		     pslldq  xmm1, 1
+		     psrldq  xmm2, 15
+			por  xmm1, xmm2
+		     movdqa  xmm2, xmm0
+		      psllq  xmm2, 1
+			por  xmm1, xmm2
+		     movdqa  xmm2, xmm0
+		     movdqa  xmm3, xmm0
+		     psrldq  xmm2, 1
+		     pslldq  xmm3, 15
+			por  xmm2, xmm3
+		     movdqa  xmm3, xmm0
+		      psrlq  xmm3, 1
+		       pxor  xmm2, xmm3
+			por  xmm0, xmm1
+		       pxor  xmm0, xmm2
+		   pmovmskb  eax, xmm0
+		      paddq  xmm0, dqword [RandInc]
+		     movdqa  dqword [RandSeed],xmm0
 			ret
 
 
@@ -49,55 +72,55 @@ GetRand:      ; get 16 random bits in ax
 AppendNoWhiteSpace:
 		 @@:  lodsb
 		      stosb
-			cmp  al,' '
-			 ja  @b
-			sub  rdi,1
+			cmp   al, ' '
+			 ja   @b
+			sub   rdi, 1
 			ret
 
 
 Append:
 		 @@:  lodsb
 		      stosb
-			cmp  al,0
-			jne  @b
-			sub  rdi,1
+			cmp   al, 0
+			jne   @b
+			sub   rdi, 1
 			ret
 
 AppendNewLine:
 		 @@:  lodsb
 		      stosb
-			cmp  al,0
-			jne  @b
-			mov  byte[rdi-1],10
+			cmp   al, 0
+			jne   @b
+			mov   byte [rdi-1], 10
 			ret
 
 
 PrintString:
-.Next:		      movzx  eax,byte[rcx]
-			lea  rcx,[rcx+1]
-			cmp  al,0
-			 je  .Done
+.Next:		      movzx   eax, byte [rcx]
+			lea   rcx, [rcx+1]
+			cmp   al, 0
+			 je   .Done
 		      stosb
-			jmp  .Next
+			jmp   .Next
 .Done:			ret
 
 
 CmpString:	   ; if beginning of string at rsi matches null terminated string at rcx
 		   ;    then advance rsi to end of match and return non zero,
 		   ;    else return zero and do nothing
-		       push  rsi
-.Next:		      movzx  eax,byte[rcx]
-			lea  rcx,[rcx+1]
-			cmp  al,0
-			 je  .Found
-			cmp  al,byte[rsi]
-			lea  rsi,[rsi+1]
-			 je  .Next
-.NoMatch:		pop  rsi
-			xor  eax,eax
+		       push   rsi
+.Next:		      movzx   eax, byte[rcx]
+			lea   rcx, [rcx+1]
+			cmp   al,0
+			 je   .Found
+			cmp   al, byte[rsi]
+			lea   rsi,[rsi+1]
+			 je   .Next
+.NoMatch:		pop   rsi
+			xor   eax, eax
 			ret
-.Found: 		pop  rax
-			 or  eax,-1
+.Found: 		pop   rax
+			 or   eax, -1
 			ret
 
 
@@ -173,103 +196,7 @@ PrintLongMove:
 
 
 
-PrintUciInfo:
-		;
-		       push   rdi rsi
 
-			lea   rdi, [Output]
-
-			mov   rax, 'time '
-		      stosq
-			sub   rdi, 3
-		       call   _GetTime
-			sub   rax, qword [SearchStartTime]
-		       call   PrintUnsignedInteger
-			mov   al,' '
-		      stosb
-
-			mov   ax, 'pv'
-		      stosw
-
-			mov   rsi, qword [rbp+Pos.ss]
-			lea   rsi, [rsi+Stack.pv]
-
-		      movzx   ecx, word [rsi]
-  .NextMove:
-			add   rsi, 2
-			mov   al,' '
-		      stosb
-		       call   PrintUciMove
-			mov   qword [rdi], rax
-			add   rdi, rdx
-
-		      movzx   ecx, word [rsi]
-		       test   ecx, ecx
-			jnz   .NextMove
-
-			mov   al, 10
-		      stosb
-			lea   rcx, [Output]
-		       call   _WriteOut
-
-			pop   rsi rdi
-			ret
-
-PrintUciMove:
-		; in:  ecx  move
-		; out: rax  move string
-		;      edx  byte length of move string  4 or 5 for promotions
-
-			mov  eax,'NULL'
-		       test  ecx,(1 shl 12)-1
-			 jz  .Return
-
-			xor  eax,eax
-			mov  edx,ecx
-			and  edx,7
-			add  edx,'a'
-			shl  edx,16
-			 or  eax,edx
-
-			mov  edx,ecx
-			shr  edx,3
-			and  edx,7
-			add  edx,'1'
-			shl  edx,24
-			 or  eax,edx
-
-			mov  edx,ecx
-			shr  edx,6
-			and  edx,7
-			add  edx,'a'
-			 or  eax,edx
-
-			mov  edx,ecx
-			shr  edx,6+3
-			and  edx,7
-			add  edx,'1'
-			shl  edx,8
-			 or  eax,edx
-
-			mov  edx,ecx
-			shr  edx,12
-			cmp  edx,MOVE_TYPE_PROM+4
-			jae  .Return
-			cmp  edx,MOVE_TYPE_PROM
-			jae  .Promotion
-	.Return:
-			mov  edx,4
-			ret
-
-	.Promotion:
-			and  edx,3
-		      movzx  edx,byte[@f+rdx]
-			shl  rdx,32
-			 or  rax,rdx
-			mov  edx,5
-			ret
-
-	@@: db 'nbrq'
 
 
 
@@ -277,19 +204,19 @@ PrintUciMove:
 
 PrintBitBoard:	 ; in: rcx bitboard
 		 ; io: rdi string
-			xor  edx,edx
-       .NextBit:	 bt  rcx,rdx
-			sbb  eax,eax
-			add  edx,1
-			and  eax,'X'-'.'
-			add  eax,'. ' + (10 shl 16)
+			xor   edx, edx
+       .NextBit:	 bt   rcx, rdx
+			sbb   eax, eax
+			add   edx, 1
+			and   eax, 'X'-'.'
+			add   eax, '. ' + (10 shl 16)
 		      stosd
-			mov  eax,edx
-			and  eax,7
-			neg  eax
-			sbb  rdi,1
-			cmp  edx,64
-			 jb  .NextBit
+			mov   eax, edx
+			and   eax, 7
+			neg   eax
+			sbb   rdi, 1
+			cmp   edx, 64
+			 jb   .NextBit
 			ret
 
 

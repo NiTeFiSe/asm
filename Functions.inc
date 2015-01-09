@@ -1,8 +1,20 @@
 
+; should work for registers or immediates
+macro ClampUnsigned x, min, max {
+local ..Lower, ..Done
+			cmp   x, min
+			 jb   ..Lower
+			cmp   x, max
+			 jb   ..Done
+			mov   x, max
+			jmp   ..Done
+	..Lower:
+			mov   x, min
+	..Done:
+}
 
 
-
-; load 64 bytes into mm registers
+; load 32 bytes into mm registers
 macro _load32 a {
     if (HAVE and HAVE_AVX1)
 		    vmovaps  ymm0,qqword[a+32*0]
@@ -12,65 +24,13 @@ macro _load32 a {
     end if
 }
 
-; store 64 bytes from mm registers
+; store 32 bytes from mm registers
 macro _store32 a {
     if (HAVE and HAVE_AVX1)
 		    vmovaps  qqword[a+32*0],ymm0
     else
 		     movaps  dqword[a+16*0],xmm0
 		     movaps  dqword[a+16*1],xmm1
-    end if
-}
-
-
-
-; load 192 bytes into mm registers
-macro _load192 a {
-    if (HAVE and HAVE_AVX1)
-		    vmovaps  ymm0,qqword[a+32*0]
-		    vmovaps  ymm1,qqword[a+32*1]
-		    vmovaps  ymm2,qqword[a+32*2]
-		    vmovaps  ymm3,qqword[a+32*3]
-		    vmovaps  ymm4,qqword[a+32*4]
-		    vmovaps  ymm5,qqword[a+32*5]
-    else
-		     movaps  xmm0,dqword[a+16*0]
-		     movaps  xmm1,dqword[a+16*1]
-		     movaps  xmm2,dqword[a+16*2]
-		     movaps  xmm3,dqword[a+16*3]
-		     movaps  xmm4,dqword[a+16*4]
-		     movaps  xmm5,dqword[a+16*5]
-		     movaps  xmm6,dqword[a+16*6]
-		     movaps  xmm7,dqword[a+16*7]
-		     movaps  xmm8,dqword[a+16*8]
-		     movaps  xmm9,dqword[a+16*9]
-		     movaps  xmm10,dqword[a+16*10]
-		     movaps  xmm11,dqword[a+16*11]
-    end if
-}
-
-; store 192 bytes from mm registers
-macro _store192 a {
-    if (HAVE and HAVE_AVX1)
-		    vmovaps  qqword[a+32*0],ymm0
-		    vmovaps  qqword[a+32*1],ymm1
-		    vmovaps  qqword[a+32*2],ymm2
-		    vmovaps  qqword[a+32*3],ymm3
-		    vmovaps  qqword[a+32*4],ymm4
-		    vmovaps  qqword[a+32*5],ymm5
-    else
-		     movaps  dqword[a+16*0],xmm0
-		     movaps  dqword[a+16*1],xmm1
-		     movaps  dqword[a+16*2],xmm2
-		     movaps  dqword[a+16*3],xmm3
-		     movaps  dqword[a+16*4],xmm4
-		     movaps  dqword[a+16*5],xmm5
-		     movaps  dqword[a+16*6],xmm6
-		     movaps  dqword[a+16*7],xmm7
-		     movaps  dqword[a+16*8],xmm8
-		     movaps  dqword[a+16*9],xmm9
-		     movaps  dqword[a+16*10],xmm10
-		     movaps  dqword[a+16*11],xmm11
     end if
 }
 

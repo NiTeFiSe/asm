@@ -10,7 +10,7 @@ DoMove_SetCheckInfo:
 
 			mov   esi, dword [rbp+Pos.sideToMove]
 
-			mov   r15, ZOBRIST_SIDE
+			mov   r15, Zobrist_Side
 
 			mov   r8d, ecx
 			shr   r8d, 6
@@ -177,8 +177,35 @@ DoMove_SetCheckInfo:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+if DEBUG
+.KingCapture:
+
+mov   r14, qword [rbp+Pos.ssTable]
+lea   r14, [r14+2*sizeof.Stack]
+lea   rdi, [Output]
+
+movzx	ecx, word[r14+Stack.currentMove]
+@@:
+call   _PrintUciMove
+mov   al, 10
+stosb
+add    r14, sizeof.Stack
+movzx	ecx, word[r14+Stack.currentMove]
+test  ecx,ecx
+jnz  @b
+call   _WriteOut_Output
+int3
+end if
+
+
 		      align   8
 .Capture:
+
+if DEBUG
+cmp   eax, King
+ je   .KingCapture
+end if
+
 			xor   esi, 1
 	; remove piece
 			mov   rdi, qword [rbp+Pos.typeBB+8*rsi]
