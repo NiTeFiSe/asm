@@ -1,6 +1,6 @@
 about another chess enigine:
 - it is a rewrite of stockfish into asm
-- assemble with fasm (www.flatassembler.com)
+- assemble with fasm (www.flatassembler.net)
 - all of the nonsense that results from c++ coders wrestling with a compiler is avoided here
 - hopefully it gather interest from other asm coders or prospetive asm coders
 
